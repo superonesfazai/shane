@@ -36,6 +36,21 @@ class Container:
         """The duration in seconds"""
         return float(self._raw["duration"])
     
+    @property
+    def videos(self):
+        """All video streams in the container"""
+        return tuple([stream for stream in self.streams if stream.is_video])
+
+    @property
+    def audios(self):
+        """All audio streams in the container"""
+        return tuple([stream for stream in self.streams if stream.is_audio])
+
+    @property
+    def subtitles(self):
+        """All subtitle streams in the container"""
+        return tuple([stream for stream in self.streams if stream.is_subtitle])
+    
     @path.setter
     def path(self, path):
         if os.path.exists(path):
