@@ -38,7 +38,26 @@ class VideoStream(Stream):
     """A video stream."""
     def __init__(self, raw):
         Stream.__init__(self, raw)
+    
+    @property
+    def bitrate(self): # TODO
+        """The number of bits processed per second."""
         raise NotImplementedError
+
+    @property
+    def fps(self):
+        """A number of frames per second."""
+        return self._raw["avg_frame_rate"]
+
+    @property
+    def width(self):
+        """The width of the the video.""""
+        return self._raw["width"]
+
+    @property
+    def height(self):
+        """The height of the the video.""""
+        return self._raw["height"]
 
 
 
