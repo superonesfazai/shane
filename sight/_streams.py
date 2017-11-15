@@ -59,6 +59,30 @@ class VideoStream(Stream):
         """The height of the the video.""""
         return self._raw["height"]
 
+    @fps.setter
+    def fps(self, value): 
+        """Property setter for self.fps."""
+        if isinstance(value, float) or isinstance(value, int):
+            self._raw["avg_frame_rate"] = value
+        else:
+            raise TypeError("The fps value must be a number.")
+
+    @width.setter
+    def width(self, value):
+        """Property setter for self.width."""
+        if isinstance(value, int):
+            self._raw["width"] = value
+        else:
+            raise TypeError("The width value must be an integer.")
+
+    @height.setter
+    def height(self, value):
+        """Property setter for self.height."""
+        if isinstance(value, int):
+            self._raw["heigth"] = value
+        else:
+            raise TypeError("The height value must be an integer.")
+
 
 
 class AudioStream(Stream):
