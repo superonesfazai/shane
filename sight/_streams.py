@@ -89,7 +89,21 @@ class AudioStream(Stream):
     """An audio stream."""
     def __init__(self, raw):
         Stream.__init__(self, raw)
-        raise NotImplementedError
+    
+    @property
+    def channels(self):
+        """The number of channels."""
+        return int(self._raw["channels"])
+
+    @property
+    def sample_rate(self):
+        """The audio sample rate."""
+        return float(self._raw["sample_rate"])
+
+    @property
+    def bitrate(self):
+        """The number of bits processed per second."""
+        return int(self._raw["bit_rate"])
 
 
 
