@@ -105,6 +105,17 @@ class AudioStream(Stream):
         """The number of bits processed per second."""
         return int(self._raw["bit_rate"])
 
+    @bitrate.setter
+    def bitrate(self, value):
+        """Property setter for self.height."""
+        if isinstance(value, int):
+            self._raw["bit_rate"] = value
+        else:
+            raise TypeError("The bitrate value must be an integer.")
+
+    # TODO @sample_rate.setter
+    # TODO @channels.setter
+
 
 
 class SubtitleStream(Stream):
