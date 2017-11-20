@@ -122,7 +122,17 @@ class SubtitleStream(Stream):
     """A subtitle stream."""
     def __init__(self, raw):
         Stream.__init__(self, raw)
-        raise NotImplementedError
+
+    @property
+    def is_forced(self):
+        """Specifies whether subtitles are forced or not."""
+        return self._raw["disposition"]["forced"] == 1
+
+    @is_forced.setter
+    def is_forced(self, value):
+        """Property setter for self.is_forced."""
+        self._raw["disposition"]["forced"] = 1 if value is True else 0
+
 
 
 
