@@ -6,6 +6,9 @@ class Stream:
     def __init__(self, raw):
         self._raw = raw  # it's json response from ffprobe
         self.metadata = self._raw.get("tags", {})
+        # defaults
+        self._raw["default_filename"] = self._raw.get("filename")
+        self._raw["default_codec_name"] = self._raw["codec_name"]
 
     @property
     def index(self):
@@ -15,7 +18,7 @@ class Stream:
     @property
     def codec(self):
         """The stream codec."""
-        return self._raw["codec_name"]
+        return self._raw["default_codec_name"]
 
     @property
     def type(self):
@@ -38,6 +41,11 @@ class VideoStream(Stream):
     """A video stream."""
     def __init__(self, raw):
         Stream.__init__(self, raw)
+        # defaults
+        self._raw["default_avg_frame_rate"] = \
+        self._raw["avg_frame_rate"] = eval(self._raw["avg_frame_rate"])
+        self._raw["default_width"] = self._raw["width"]
+        self._raw["default_height"] = self._raw["height"]
     
     @property
     def bitrate(self): # TODO
