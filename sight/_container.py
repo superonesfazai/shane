@@ -11,6 +11,12 @@ class Container:
         self.streams = streams
         self.metadata = self._raw.get("tags", {})
 
+        # defaults
+        self._raw["default_filename"] = self._raw["filename"]
+
+        for stream in self.streams:
+            stream.container = self
+
     @property
     def path(self):
         """The path to the file that is wrapped by the Container"""
