@@ -24,6 +24,22 @@ class Stream:
     def type(self):
         """The common type of the stream."""
         return self._raw["codec_type"]
+    
+    @property
+    def is_video(self):
+        return self.type == "video"
+
+    @property
+    def is_audio(self):
+        return self.type == "audio"
+
+    @property
+    def is_subtitle(self):
+        return self.type == "subtitle"
+
+    @property
+    def is_data(self):
+        return self.type == "data"
 
     @property
     def is_default(self):
