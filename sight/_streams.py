@@ -6,6 +6,8 @@ class Stream:
     def __init__(self, raw):
         self._raw = raw  # it's json response from ffprobe
         self.metadata = self._raw.get("tags", {})
+        self.container = None
+        
         # defaults
         self._raw["default_filename"] = self._raw.get("filename")
         self._raw["default_codec_name"] = self._raw["codec_name"]
@@ -14,6 +16,11 @@ class Stream:
     def index(self):
         """The stream index in the container."""
         return self._raw["index"]
+
+    @property
+    def inner(self):
+        """Indicates whether the stream is some container or not"""
+        return self.container is not None
 
     @property
     def codec(self):

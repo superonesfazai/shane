@@ -13,7 +13,7 @@ class Container:
 
         # defaults
         self._raw["default_filename"] = self._raw["filename"]
-
+        
         for stream in self.streams:
             stream.container = self
 
@@ -21,7 +21,11 @@ class Container:
     def path(self):
         """The path to the file that is wrapped by the Container"""
         return self._raw["filename"]
-
+    
+    @property
+    def _default_path(self):
+        return self._raw["default_filename"]
+    
     @property
     def format(self):
         """The container format name"""
