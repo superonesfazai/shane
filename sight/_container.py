@@ -1,5 +1,5 @@
 import os
-
+from pathlib import Path
 
 class Container:
     """A Container wraps a file that contains several multimedia 
@@ -21,6 +21,10 @@ class Container:
     def path(self):
         """The path to the file that is wrapped by the Container"""
         return self._raw["filename"]
+    
+    @property
+    def extention(self):
+        return str(Path(self._raw["filename"]).suffix)
     
     @property
     def _default_path(self):
