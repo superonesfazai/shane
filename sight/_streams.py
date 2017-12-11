@@ -7,11 +7,15 @@ class Stream:
         self._raw = raw  # it's json response from ffprobe
         self.metadata = self._raw.get("tags", {})
         self.container = None
-        
+
         # defaults
         self._raw["default_filename"] = self._raw.get("filename")
         self._raw["default_codec_name"] = self._raw["codec_name"]
 
+    @property
+    def path(self):
+        return self._raw.get("filename")
+    
     @property
     def index(self):
         """The stream index in the container."""
