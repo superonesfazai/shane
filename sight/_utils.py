@@ -11,6 +11,26 @@ FFPROBE = os.getenv("FFPROBE_BINARY", "ffprobe")
 ffprobe_command = [FFPROBE, "-loglevel", "panic", "-print_format", "json"]
 ffmpeg_command = [FFMPEG, "-y", "-loglevel", "panic"]
 
+valid_video_extentions = [".mkv", ".m4v", ".mp4"]
+valid_audio_extentions = [".aac", ".ac3", ".m4a"]
+valid_subtitle_extentions = [".srt"]
+
+extention_to_vcodec = {".mkv": ["h264"], ".m4v": ["h264"], ".mp4": ["h264"]}
+extention_to_scodec = {
+    ".mkv": ["subrip", "srt", "ass", "ssa", "dvd_subtitle", "vobsub"],
+    ".srt": ["subrip", "srt"],
+    # FFmpeg's MP4 muxer does not support sub formats other than mov_text.
+    ".m4v": ["mov_text"],
+    ".mp4": ["mov_text"],
+}
+extention_to_acodec = {
+    ".mkv": ["aac", "ac3", "flac"],
+    ".m4v": ["aac", "alac"],
+    ".mp4": ["aac", "alac"],
+    ".ac3": ["ac3"],
+    ".aac": ["aac"],
+    ".m4a": ["aac", "alac"],
+}
 
 
 def make_container(format_, chapters, streams):
