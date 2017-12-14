@@ -1,4 +1,9 @@
-
+from ._config import (
+    extention_to_vcodec, extention_to_acodec, extention_to_scodec,
+    )
+from ._config import (
+    valid_video_extentions, valid_audio_extentions, valid_subtitle_extentions,
+    )
 
 
 class Stream:
@@ -62,6 +67,24 @@ class Stream:
         """Property setter for self.is_default."""
         self._raw["disposition"]["default"] = 1 if value else 0
 
+    @property
+    def _codec_if_convert_to(self):
+        if self.is_video:
+            codec_option = extention_to_vcodec
+            possible_extenions = valid_video_extentions
+        elif self.is_audio:
+            codec_option = extention_to_acodec
+            possible_extenions = valid_video_extentions + valid_audio_extentions
+        elif self.is_subtitle:
+            codec_option = extention_to_scodec
+            possible_extenions = valid_video_extentions + valid_subtitle_extentions
+        result = {}
+        for extention in possible_extenions:
+            if self.codec_name in codec_option[extention]:
+                result[extention] = 'copy'
+            else:
+                result[extention] = codec_option[extention][0]
+        return result
 
 
 class VideoStream(Stream):
