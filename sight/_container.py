@@ -51,6 +51,10 @@ class Container:
         return float(self._raw["duration"])
     
     @property
+    def start_time(self):
+        return float(self._raw["start_time"])  
+      
+    @property
     def videos(self):
         """All video streams in the container"""
         return tuple([stream for stream in self.streams if stream.is_video])
