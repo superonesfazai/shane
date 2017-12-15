@@ -72,6 +72,10 @@ class Container:
         else:
             self._raw['filename'] = path
 
+    def remove_stream(self, function):
+        """Removes streams for which function returns true""" 
+        self.streams = [s for s in self.streams if not function(s)]
+    
     def save(self): # TODO
         """Saves all changes"""
         raise NotImplementedError
