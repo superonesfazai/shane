@@ -1,7 +1,7 @@
-from ._config import (
+from ._utils import (
     extention_to_vcodec, extention_to_acodec, extention_to_scodec,
     )
-from ._config import (
+from ._utils import (
     valid_video_extentions, valid_audio_extentions, valid_subtitle_extentions,
     )
 
@@ -109,12 +109,12 @@ class VideoStream(Stream):
 
     @property
     def width(self):
-        """The width of the the video.""""
+        """The width of the the video."""
         return self._raw["width"]
 
     @property
     def height(self):
-        """The height of the the video.""""
+        """The height of the the video."""
         return self._raw["height"]
 
     @fps.setter

@@ -3,7 +3,7 @@ import json
 import subprocess as sp
 
 from ._container import Container
-from ._streams import VideoStream, AudioStream, SubtitleStream
+
 
 FFMPEG = os.getenv("FFMPEG_BINARY", "ffmpeg")
 FFPROBE = os.getenv("FFPROBE_BINARY", "ffprobe")
@@ -38,6 +38,7 @@ def make_container(format_, chapters, streams):
 
 
 def make_stream(raw):
+    from ._streams import VideoStream, AudioStream, SubtitleStream
     if raw["codec_type"] == "video":
         return VideoStream(raw)
     elif raw["codec_type"] == "audio":
