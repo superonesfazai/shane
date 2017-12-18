@@ -15,6 +15,10 @@ valid_video_extentions = [".mkv", ".m4v", ".mp4"]
 valid_audio_extentions = [".aac", ".ac3", ".m4a"]
 valid_subtitle_extentions = [".srt"]
 
+vcodecs = ['h264']
+acodecs = ["aac", "ac3", "flac", "mp3",]
+scodecs = ["mov_text", "subrip", "srt", "ass", "ssa", "dvd_subtitle", "vobsub"]
+
 extention_to_vcodec = {".mkv": ["h264"], ".m4v": ["h264"], ".mp4": ["h264"]}
 extention_to_scodec = {
     ".mkv": ["subrip", "srt", "ass", "ssa", "dvd_subtitle", "vobsub"],

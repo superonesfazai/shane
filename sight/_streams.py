@@ -61,7 +61,25 @@ class Stream:
     def is_default(self):
         """Specifies whether the stream is the default stream"""
         return self._raw["disposition"]["default"] == 1
-
+    
+    @codec_name.setter
+    def codec(self, value):
+        """Property setter for self.codec."""
+        if self.is_video:
+            if value in vcodecs:
+                self._raw["codec_name"] = value
+                return
+        elif self.is_audio:
+            if value in acodecs:
+                self._raw["codec_name"] = value
+                return
+        elif self.is_subtitle:
+            if value in scodecs:
+                self._raw["codec_name"] = value
+                return
+        else:
+            raise ValueError
+    
     @is_default.setter
     def is_default(self, value: bool):
         """Property setter for self.is_default."""
