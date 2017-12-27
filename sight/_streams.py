@@ -62,7 +62,7 @@ class Stream:
         """Specifies whether the stream is the default stream"""
         return self._raw["disposition"]["default"] == 1
     
-    @codec_name.setter
+    @codec.setter
     def codec(self, value):
         """Property setter for self.codec."""
         if self.is_video:
@@ -98,11 +98,33 @@ class Stream:
             possible_extenions = valid_video_extentions + valid_subtitle_extentions
         result = {}
         for extention in possible_extenions:
-            if self.codec_name in codec_option[extention]:
+            if self.codec in codec_option[extention]:
                 result[extention] = 'copy'
             else:
                 result[extention] = codec_option[extention][0]
         return result
+
+    def _make_output_commands(self, i, o, ext):
+        """Creates `list` of output options for the stream.
+
+        `i` - input specifier
+        `o` - output specifier
+        `ext` - output extention
+        """
+        raise NotImplementedError(
+            "You must write `_make_output_commands` \
+        method for {self.__class__.__name__}"
+        )
+
+    def _add_metadata(self, output_specifier):
+        """Generates command with output metadata
+        
+        `o` - output specifier"""
+        result = []
+        for key, value in self.metadata.items():
+            result += [f"-metadata{output_specifier}", f"{key}={value}"]
+        return result
+
 
 
 class VideoStream(Stream):
@@ -158,6 +180,50 @@ class VideoStream(Stream):
             self._raw["heigth"] = value
         else:
             raise TypeError("The height value must be an integer.")
+    
+    def _with_changed_fps(self):
+        return self._raw["default_avg_frame_rate"] != self._raw["avg_frame_rate"]
+
+    def _with_chaged_ratio(self):
+        return (
+            self._raw["default_height"] != self._raw["height"]
+            or self._raw["default_width"] != self._raw["width"]
+        )
+
+    def _make_output_commands(self, i, o, ext):
+        commands = []
+        if self._with_changed_fps():
+            commands += self._fps_command(i, ext)
+        else:
+            commands += self._codec_command(i, ext)
+        if self._with_chaged_ratio():
+            commands += self._ratio_command(i)
+
+        # commands += self._default_command(i)  # TODO
+        commands += ["-map", f"{i}:{self.index}"]
+        commands += self._add_metadata(output_specifier=f":s:{o}")
+        return commands
+
+    def _fps_command(self, i, ext):
+        fps_command = f"-r:{i}:{self.index}"
+        fps_value = str(self.fps)
+        # fps settings and 'stream copy' settings cannot be used together.
+        vcodec_command = f"-{self.type[0]}codec:{self.index}"
+        if self._codec_if_convert_to[ext] == "copy":
+            codec_value = self.codec
+        else:
+            codec_value = self._codec_if_convert_to[ext]
+        return [fps_command, fps_value, vcodec_command, codec_value]
+
+    def _codec_command(self, i, ext):
+        codec_command = f"-{self.type[0]}codec:{self.index}"
+        codec_value = self._codec_if_convert_to[ext]
+        return [codec_command, codec_value]
+
+    def _ratio_command(self, i):
+        frame_size_command = f"-s:{i}:{self.index}"
+        frame_size_value = f"{self.width}x{self.height}"
+        return [frame_size_command, frame_size_value]
 
 
 
@@ -191,6 +257,16 @@ class AudioStream(Stream):
 
     # TODO @sample_rate.setter
     # TODO @channels.setter
+   
+    def _make_output_commands(self, i, o, ext):
+        commands = []
+        # TODO: bitrate
+        # TODO: channels
+        # TODO: sample_rate
+        # commands += self._default_command(i) # TODO
+        commands += ["-map", f"{i}:{self.index}"]
+        commands += self._add_metadata(output_specifier=f":s:{o}")
+        return commands
 
 
 
@@ -209,6 +285,13 @@ class SubtitleStream(Stream):
         """Property setter for self.is_forced."""
         self._raw["disposition"]["forced"] = 1 if value is True else 0
 
+    def _make_output_commands(self, i, o, ext):
+        commands = []
+        # commands += self._forced_command(i) # TODO
+        # commands += self._default_command(i) # TODO
+        commands += ["-map", f"{i}:{self.index}"]
+        commands += self._add_metadata(output_specifier=f":s:{o}")
+        return commands
 
 
 
