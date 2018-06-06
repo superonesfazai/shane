@@ -2,7 +2,7 @@ import os
 import json
 import subprocess as sp
 
-from ._container import Container
+
 
 
 FFMPEG = os.getenv("FFMPEG_BINARY", "ffmpeg")
@@ -38,6 +38,7 @@ extention_to_acodec = {
 
 
 def make_container(format_, chapters, streams):
+    from ._container import Container
     return Container(format_, chapters, streams)
 
 
