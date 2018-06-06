@@ -9,7 +9,7 @@ __all__ = ['open']
 
 def open(path):
     if not os.path.exists(path):
-        raise ValueError # TODO Error
+        raise FileNotFoundError("The path '{path}' doesn't exists.")
     format_info = call_format(path)
     streams_info = list(call_streams(path))
     if len(streams_info) > 1:
