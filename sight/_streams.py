@@ -8,7 +8,7 @@ from ._utils import (
 
 class Stream:
     """A base class of the streams."""
-    def __init__(self, raw):
+    def __init__(self, raw: dict):
         self._raw = raw  # it's json response from ffprobe
         self.metadata = self._raw.get("tags", {})
         self.container = None
@@ -18,52 +18,53 @@ class Stream:
         self._raw["default_codec_name"] = self._raw["codec_name"]
 
     @property
-    def path(self):
+    def path(self) -> str:
+        """The path to the file, if the stream is not inner."""
         return self._raw.get("filename")
     
     @property
-    def index(self):
+    def index(self) -> int:
         """The stream index in the container."""
         return self._raw["index"]
 
     @property
-    def inner(self):
+    def inner(self) -> bool:
         """Indicates whether the stream is some container or not"""
         return self.container is not None
 
     @property
-    def codec(self):
+    def codec(self) -> str:
         """The stream codec."""
         return self._raw["default_codec_name"]
 
     @property
-    def type(self):
+    def type(self) -> str:
         """The common type of the stream."""
         return self._raw["codec_type"]
     
     @property
-    def is_video(self):
+    def is_video(self) -> bool:
         return self.type == "video"
 
     @property
-    def is_audio(self):
+    def is_audio(self) -> bool:
         return self.type == "audio"
 
     @property
-    def is_subtitle(self):
+    def is_subtitle(self) -> bool:
         return self.type == "subtitle"
 
     @property
-    def is_data(self):
+    def is_data(self) -> bool:
         return self.type == "data"
 
     @property
-    def is_default(self):
+    def is_default(self) -> bool:
         """Specifies whether the stream is the default stream"""
         return self._raw["disposition"]["default"] == 1
     
     @codec.setter
-    def codec(self, value):
+    def codec(self, value: str):
         """Property setter for self.codec."""
         if self.is_video:
             if value in vcodecs:
@@ -116,7 +117,7 @@ class Stream:
         method for {self.__class__.__name__}"
         )
 
-    def _add_metadata(self, output_specifier):
+    def _add_metadata(self, output_specifier: str):
         """Generates command with output metadata
         
         `o` - output specifier"""
@@ -129,7 +130,7 @@ class Stream:
 
 class VideoStream(Stream):
     """A video stream."""
-    def __init__(self, raw):
+    def __init__(self, raw: dict):
         Stream.__init__(self, raw)
         # defaults
         self._raw["default_avg_frame_rate"] = \
@@ -138,27 +139,27 @@ class VideoStream(Stream):
         self._raw["default_height"] = self._raw["height"]
     
     @property
-    def bitrate(self): # TODO
+    def bitrate(self) -> int: # TODO
         """The number of bits processed per second."""
         raise NotImplementedError
 
     @property
-    def fps(self):
+    def fps(self) -> int:
         """A number of frames per second."""
         return self._raw["avg_frame_rate"]
 
     @property
-    def width(self):
+    def width(self) -> int:
         """The width of the the video."""
         return self._raw["width"]
 
     @property
-    def height(self):
+    def height(self) -> int:
         """The height of the the video."""
         return self._raw["height"]
 
     @fps.setter
-    def fps(self, value): 
+    def fps(self, value: float): 
         """Property setter for self.fps."""
         if isinstance(value, float) or isinstance(value, int):
             self._raw["avg_frame_rate"] = value
@@ -166,7 +167,7 @@ class VideoStream(Stream):
             raise TypeError("The fps value must be a number.")
 
     @width.setter
-    def width(self, value):
+    def width(self, value: int):
         """Property setter for self.width."""
         if isinstance(value, int):
             self._raw["width"] = value
@@ -174,7 +175,7 @@ class VideoStream(Stream):
             raise TypeError("The width value must be an integer.")
 
     @height.setter
-    def height(self, value):
+    def height(self, value: int):
         """Property setter for self.height."""
         if isinstance(value, int):
             self._raw["heigth"] = value
@@ -229,26 +230,26 @@ class VideoStream(Stream):
 
 class AudioStream(Stream):
     """An audio stream."""
-    def __init__(self, raw):
+    def __init__(self, raw: dict):
         Stream.__init__(self, raw)
     
     @property
-    def channels(self):
+    def channels(self) -> int:
         """The number of channels."""
         return int(self._raw["channels"])
 
     @property
-    def sample_rate(self):
+    def sample_rate(self) -> float:
         """The audio sample rate."""
         return float(self._raw["sample_rate"])
 
     @property
-    def bitrate(self):
+    def bitrate(self) -> int:
         """The number of bits processed per second."""
         return int(self._raw["bit_rate"])
 
     @bitrate.setter
-    def bitrate(self, value):
+    def bitrate(self, value: int):
         """Property setter for self.height."""
         if isinstance(value, int):
             self._raw["bit_rate"] = value
@@ -272,16 +273,16 @@ class AudioStream(Stream):
 
 class SubtitleStream(Stream):
     """A subtitle stream."""
-    def __init__(self, raw):
+    def __init__(self, raw: dict):
         Stream.__init__(self, raw)
 
     @property
-    def is_forced(self):
+    def is_forced(self) -> bool:
         """Specifies whether subtitles are forced or not."""
         return self._raw["disposition"]["forced"] == 1
 
     @is_forced.setter
-    def is_forced(self, value):
+    def is_forced(self, value: bool):
         """Property setter for self.is_forced."""
         self._raw["disposition"]["forced"] = 1 if value is True else 0
 

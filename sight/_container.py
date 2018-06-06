@@ -1,6 +1,8 @@
 import os
 import math
 from pathlib import Path
+import subprocess as sp
+from ._utils import ffmpeg_command
 
 class Container:
     """A Container wraps a file that contains several multimedia 
@@ -25,17 +27,17 @@ class Container:
         return f"Container(path={path}, size={size}, duration={duration})"
     
     @property
-    def path(self):
+    def path(self) -> str:
         """The path to the file that is wrapped by the Container"""
         return self._raw["filename"]
     
     @property
-    def extention(self):
+    def extention(self) -> str:
         """The file extention."""
         return str(Path(self._raw["filename"]).suffix)
     
     @property
-    def _default_path(self):
+    def _default_path(self) -> str:
         return self._raw["default_filename"]
     
     @property
@@ -44,12 +46,12 @@ class Container:
         return self._raw["format_name"]
 
     @property
-    def size(self):
+    def size(self) -> int:
         """The file size in bytes"""
         return int(self._raw["size"])
     
     @property
-    def human_size(self):
+    def human_size(self) -> str:
         """The human-readable file size."""
         if self.size == 0:
             return "0B"
@@ -60,53 +62,53 @@ class Container:
         return f"{s} {size_name[i]}"
     
     @property
-    def bitrate(self):
+    def bitrate(self) -> int:
         """The number of bits processed per second"""
         return int(self._raw["bit_rate"])
 
     @property
-    def duration(self):
+    def duration(self) -> float:
         """The duration in seconds"""
         return float(self._raw["duration"])
     
     @property
-    def human_duration(self):
+    def human_duration(self) -> str:
         """The human-readable duration."""
         minutes, seconds = divmod(self.duration, 60)
         hours, _ = divmod(minutes, 60)
         return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"    
     
     @property
-    def start_time(self):
+    def start_time(self) -> float:
         return float(self._raw["start_time"])  
       
     @property
-    def videos(self):
+    def videos(self) -> tuple:
         """All video streams in the container"""
         return tuple([stream for stream in self.streams if stream.is_video])
 
     @property
-    def audios(self):
+    def audios(self) -> tuple:
         """All audio streams in the container"""
         return tuple([stream for stream in self.streams if stream.is_audio])
 
     @property
-    def subtitles(self):
+    def subtitles(self) -> tuple:
         """All subtitle streams in the container"""
         return tuple([stream for stream in self.streams if stream.is_subtitle])
     
     @path.setter
-    def path(self, path):
+    def path(self, path: str):
         if os.path.exists(path):
             raise ValueError(f"The path '{path}' is already exists")
         else:
             self._raw['filename'] = path
 
-    def remove_stream(self, function):
+    def remove_stream(self, function) -> None:
         """Removes streams for which function returns true""" 
         self.streams = [s for s in self.streams if not function(s)]
     
-    def save(self): # TODO
+    def save(self) -> int:
         """Saves all changes"""
         def _generate_input_paths(inputs):
             return [input_file._raw["default_filename"] for input_file in inputs]
@@ -170,7 +172,7 @@ class Container:
         call += _generate_output_options(inputs)
 
         if self.path == self._default_path:
-            raise NotImplementedError  # TODO Error
+            raise NotImplementedError  # TODO
         
         call += [self.path]
     
