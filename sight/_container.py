@@ -1,4 +1,5 @@
 import os
+import math
 from pathlib import Path
 
 class Container:
@@ -16,7 +17,13 @@ class Container:
         
         for stream in self.streams:
             stream.container = self
-
+    
+    def __repr__(self):
+        path = self.path
+        size = self.human_size
+        duration = self.human_duration
+        return f"Container(path={path}, size={size}, duration={duration})"
+    
     @property
     def path(self):
         """The path to the file that is wrapped by the Container"""
@@ -24,6 +31,7 @@ class Container:
     
     @property
     def extention(self):
+        """The file extention."""
         return str(Path(self._raw["filename"]).suffix)
     
     @property
@@ -39,7 +47,18 @@ class Container:
     def size(self):
         """The file size in bytes"""
         return int(self._raw["size"])
-
+    
+    @property
+    def human_size(self):
+        """The human-readable file size."""
+        if self.size == 0:
+            return "0B"
+        size_name = ("B", "KB", "MB", "GB", "TB")
+        i = int(math.floor(math.log(self.size, 1024)))
+        p = math.pow(1024, i)
+        s = round(self.size / p, 2)
+        return f"{s} {size_name[i]}"
+    
     @property
     def bitrate(self):
         """The number of bits processed per second"""
@@ -49,6 +68,13 @@ class Container:
     def duration(self):
         """The duration in seconds"""
         return float(self._raw["duration"])
+    
+    @property
+    def human_duration(self):
+        """The human-readable duration."""
+        minutes, seconds = divmod(self.duration, 60)
+        hours, _ = divmod(minutes, 60)
+        return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"    
     
     @property
     def start_time(self):
@@ -144,7 +170,7 @@ class Container:
         call += _generate_output_options(inputs)
 
         if self.path == self._default_path:
-            raise RuntimeError  # TODO Error
+            raise NotImplementedError  # TODO Error
         
         call += [self.path]
     
