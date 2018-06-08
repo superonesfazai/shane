@@ -165,17 +165,34 @@ class Container:
                 result += [f"-metadata{output_specifier}", f"{key}={value}"]
             return result
 
+        def _choose_temp_path(default_path):
+            i = 1
+            root, ext = os.path.splitext(default_path)
+            temp_path = f"{root} (temp {i}){ext}"
+            while os.path.exists(temp_path):
+                i += 1
+                temp_path = f"{root} (temp {i}){ext}"
+            return temp_path
+            
         inputs = [self] + [s for s in self.streams if not s.inner]
         call = []
         call += ffmpeg_command
         call += _input_paths_and_their_options(inputs)
         call += _generate_output_options(inputs)
 
+        # if path was not changed
         if self.path == self._default_path:
-            raise NotImplementedError  # TODO
+            path = _choose_temp_path(self.path)
+        else:
+            path = self.path
         
-        call += [self.path]
-    
+        call += [path]
         # print(call)
+        response = sp.call(call)
 
-        return sp.call(call)
+        if self.path == self._default_path:
+            temp = self.path
+            os.remove(self.path)
+            os.rename(path, temp)
+
+        return response
