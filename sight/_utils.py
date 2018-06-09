@@ -13,7 +13,7 @@ FFPROBE_COMMAND = [
 ]
 FFMPEG_COMMAND = [
     FFMPEG, 
-    # "-loglevel", "panic",
+    "-loglevel", "panic",
     ]
 
 # valid output extentions
@@ -60,13 +60,18 @@ SIGHT_CODEC_FROM_FFMPEG = {
 }
 
 
-def make_container(format_, chapters, streams):
-    from ._container import Container
-    return Container(format_, chapters, streams)
+# def make_container(format_, chapters, streams):
+#     from ._container import Container
+#     return Container(format_, chapters, streams)
 
 
 def make_stream(raw):
-    from ._streams import VideoStream, AudioStream, SubtitleStream, DataStream
+    from ._streams import (
+        VideoStream, 
+        AudioStream, 
+        SubtitleStream, 
+        DataStream
+    )
     if raw["codec_type"] == "video":
         return VideoStream(raw)
     elif raw["codec_type"] == "audio":
@@ -109,3 +114,30 @@ def _call_ffprobe(show_what, path):
         key = "chapters"
     response = sp.check_output(FFPROBE_COMMAND + [command, "-i", path])
     return json.loads(response).get(key)
+
+
+class Something:
+    """It is either a stream or the container. You can not find out 
+    by looking at its `path`."""
+    def __init__(self, path):
+        self.path = path
+        self.format = call_format(path)
+        self.streams = call_streams(path)
+        self.chapters = call_chapters(path)
+        self.first_stream = self.streams[0]
+    
+    @property
+    def is_stream(self):
+        return len(self.streams) == 1
+
+    @property
+    def is_container(self):
+        return len(self.streams) > 1
+
+    def as_stream(self):
+        self.first_stream.update(self.format)
+        return make_stream(self.first_stream)
+    
+    def as_container(self):
+        from ._container import Container
+        return Container(self.path)
