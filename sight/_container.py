@@ -10,24 +10,27 @@ class Container:
     """A Container wraps a file that contains several multimedia 
     streams.
     """
-    def __init__(self, format_, chapters, streams):
-        self._raw = format_
-        self.chapters = chapters
-        self.streams = streams
-        self.metadata = self._raw.get("tags", {})
+    # def __init__(self, format_, chapters, streams):
+    def __init__(self, path: str):
+        self._init(path)
 
-        # defaults
-        self._raw["default_filename"] = self._raw["filename"]
-        
-        for stream in self.streams:
-            stream.container = self
-    
     def __repr__(self):
         path = self.path
         size = self.human_size
         duration = self.human_duration
         return f"Container(path={path}, size={size}, duration={duration})"
-    
+
+    def _init(self, path):
+        from ._utils import call_chapters, call_format, call_streams, make_stream
+        self._raw = call_format(path)
+        self.chapters = call_chapters(path)
+        self.streams = list(map(make_stream, call_streams(path)))
+        self.metadata = self._raw.get("tags", {})
+        for stream in self.streams:
+            stream.container = self
+        # defaults
+        self._raw["default_filename"] = self._raw["filename"]
+        
     @property
     def path(self) -> str:
         """The path to the file that is wrapped by the Container"""
@@ -210,4 +213,6 @@ class Container:
             os.remove(self.path)
             os.rename(path, temp)
 
+        self._init(temp)
+        
         return response
