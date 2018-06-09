@@ -1,5 +1,10 @@
 .DS_Store
 .vscode/
+
 *.egg-info
+
+!README.md
+*.md
+
 venv/
 
