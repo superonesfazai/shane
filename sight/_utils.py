@@ -3,37 +3,60 @@ import json
 import subprocess as sp
 
 
-
-
 FFMPEG = os.getenv("FFMPEG_BINARY", "ffmpeg")
 FFPROBE = os.getenv("FFPROBE_BINARY", "ffprobe")
 
-ffprobe_command = [FFPROBE, "-loglevel", "panic", "-print_format", "json"]
-ffmpeg_command = [FFMPEG, "-y", "-loglevel", "panic"]
+FFPROBE_COMMAND = [
+    FFPROBE, 
+    "-loglevel", "panic", 
+    "-print_format", "json"
+]
+FFMPEG_COMMAND = [
+    FFMPEG, 
+    # "-loglevel", "panic",
+    ]
 
-valid_video_extentions = [".mkv", ".m4v", ".mp4"]
-valid_audio_extentions = [".aac", ".ac3", ".m4a"]
-valid_subtitle_extentions = [".srt"]
+# valid output extentions
+SUPPORTED_VIDEO_EXTENTIONS = [".mkv", ".m4v", ".mp4"]
+SUPPORTED_AUDIO_EXTENTIONS = [".aac", ".ac3", ".m4a"]
+SUPPORTED_SUBTITLE_EXTENTIONS = [".srt"]
 
-vcodecs = ['h264']
-acodecs = ["aac", "ac3", "flac", "mp3",]
-scodecs = ["mov_text", "subrip", "srt", "ass", "ssa", "dvd_subtitle", "vobsub"]
+SUPPORTED_VIDEO_CODECS = ['h264', 'h265']
+SUPPORTED_AUDIO_CODECS = ["aac", "ac3", "flac"]
+SUPPORTED_SUBTITLE_CODECS = ["mov_text", "subrip", "srt", "ass", "ssa" ]#, "dvd_subtitle", "vobsub"]
 
-extention_to_vcodec = {".mkv": ["h264"], ".m4v": ["h264"], ".mp4": ["h264"]}
-extention_to_scodec = {
-    ".mkv": ["subrip", "srt", "ass", "ssa", "dvd_subtitle", "vobsub"],
-    ".srt": ["subrip", "srt"],
-    # FFmpeg's MP4 muxer does not support sub formats other than mov_text.
-    ".m4v": ["mov_text"],
-    ".mp4": ["mov_text"],
+
+CONTAINERS_VCODECS = {
+    ".mkv": ["h264", 'h265'], 
+    ".m4v": ["h264", 'h265'],
+    ".mp4": ["h264", 'h265'],
 }
-extention_to_acodec = {
+
+CONTAINERS_ACODECS = {
     ".mkv": ["aac", "ac3", "flac"],
     ".m4v": ["aac", "alac"],
     ".mp4": ["aac", "alac"],
     ".ac3": ["ac3"],
     ".aac": ["aac"],
     ".m4a": ["aac", "alac"],
+}
+
+CONTAINERS_SCODECS = {
+    ".mkv": ["subrip", "srt", "ass", "ssa", "dvd_subtitle", "vobsub"],
+    ".srt": ["subrip", "srt"],
+    # FFmpeg's MP4 muxer does not support sub formats other than mov_text.
+    ".m4v": ["mov_text"],
+    ".mp4": ["mov_text"],
+}
+
+
+FFMPEG_CODEC_FROM_SIGHT = {
+    'h265': 'libx265',
+}
+
+SIGHT_CODEC_FROM_FFMPEG = {
+    'hevc': 'h265',
+    # 'libx265': 'h265'
 }
 
 
@@ -43,7 +66,7 @@ def make_container(format_, chapters, streams):
 
 
 def make_stream(raw):
-    from ._streams import VideoStream, AudioStream, SubtitleStream
+    from ._streams import VideoStream, AudioStream, SubtitleStream, DataStream
     if raw["codec_type"] == "video":
         return VideoStream(raw)
     elif raw["codec_type"] == "audio":
@@ -51,7 +74,7 @@ def make_stream(raw):
     elif raw["codec_type"] == "subtitle":
         return SubtitleStream(raw)
     elif raw["codec_type"] == "data":
-        raise NotImplementedError("Not Implemented DataStream.")  # TODO
+        return DataStream(raw)
     else:
         raise ValueError("Invalid Stream")
 
@@ -84,5 +107,5 @@ def _call_ffprobe(show_what, path):
     else:
         command = "-show_chapters"
         key = "chapters"
-    response = sp.check_output(ffprobe_command + [command, "-i", path])
+    response = sp.check_output(FFPROBE_COMMAND + [command, "-i", path])
     return json.loads(response).get(key)
