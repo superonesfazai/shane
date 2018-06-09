@@ -1,3 +1,5 @@
+import os
+import subprocess as sp
 from ._utils import CONTAINERS_VCODECS, CONTAINERS_ACODECS, CONTAINERS_SCODECS
 from ._utils import FFMPEG_CODEC_FROM_SIGHT, SIGHT_CODEC_FROM_FFMPEG
 from ._utils import (
@@ -10,6 +12,7 @@ from ._utils import (
     SUPPORTED_AUDIO_EXTENTIONS,
     SUPPORTED_SUBTITLE_EXTENTIONS,
 )
+from ._utils import FFMPEG_COMMAND
 
 class Stream:
     """A base class of the streams."""
@@ -23,12 +26,27 @@ class Stream:
         self._raw["default_codec_name"] = \
         self._raw["codec_name"] = SIGHT_CODEC_FROM_FFMPEG.get(
             self._raw["codec_name"], self._raw["codec_name"])
+        
+        self._raw['default_filename'] = \
+        self._raw['filename'] = self._raw.get('filename')
 
     @property
     def path(self) -> str:
         """The path to the file, if the stream is not inner."""
-        return self._raw.get("filename")
-    
+        return self._raw["filename"]
+
+    @property
+    def _default_path(self):
+        return self._raw['default_filename']
+
+    @property
+    def extention(self):
+        """The stream extention."""
+        if self._raw["filename"]:
+            return os.path.splitext(self._raw["filename"])[-1]
+        else:
+            return None
+
     @property
     def index(self) -> int:
         """The stream index in the container."""
@@ -73,6 +91,34 @@ class Stream:
     @property
     def _default_codec(self):    
         return self._raw["default_codec_name"]
+
+    @path.setter
+    def path(self, path):
+        """Property setter for self.path."""
+        if self.inner == True:
+            raise AttributeError("An inner stream can not have a path")
+        if os.path.exists(path):
+            raise ValueError(f"The path '{path}' already exists")
+        self._raw["filename"] = path
+
+    @extention.setter
+    def extention(self, ext):
+        """Property setter for self.extention."""
+        if self.inner == True:
+            raise AttributeError("An inner stream can not have an extention")
+        if self.is_video:
+            supported_extentions = SUPPORTED_VIDEO_EXTENTIONS
+        elif self.is_audio:
+            supported_extentions = SUPPORTED_AUDIO_EXTENTIONS
+        elif self.is_subtitle:
+            supported_extentions = SUPPORTED_SUBTITLE_EXTENTIONS
+        else:
+            raise NotImplementedError
+        if ext in supported_extentions:
+            root, _ = os.path.splitext(self.path)
+            self.path = root + ext
+        else:
+            raise ValueError(f"The extention '{ext}' is not supported.")
 
     @codec.setter
     def codec(self, value: str):
@@ -139,6 +185,51 @@ class Stream:
         for key, value in self.metadata.items():
             result += [f"-metadata{output_specifier}", f"{key}={value}"]
         return result
+
+    def _make_output_commands(self, i, o, ext, crf):
+        pass
+
+    def save_as(self, path=None, **settings):
+        def _choose_temp_path(default_path):
+            i = 1
+            root, ext = os.path.splitext(default_path)
+            temp_path = f"{root} (temp {i}){ext}"
+            while os.path.exists(temp_path):
+                i += 1
+                temp_path = f"{root} (temp {i}){ext}"
+            return temp_path
+
+        crf = settings.get('crf')
+        
+        if self.container:
+            input_path = self.container.path 
+        else:
+            input_path = self._default_path
+        
+        output_path = path or self.path
+        ext = os.path.splitext(path)[1] or self.extention
+        
+        call = []
+        call += FFMPEG_COMMAND
+        call += ['-i', input_path]
+        call += self._make_output_commands(0, 0, ext, crf=None)
+        
+        if input_path == output_path:
+            path = _choose_temp_path(input_path)
+        else:
+            path = output_path
+
+        call += [path]
+        
+        print(call)
+        response = sp.call(call)
+
+        if input_path == output_path:
+            temp = input_path
+            os.remove(input_path)
+            os.rename(path, temp)
+        
+        return response
 
 
 
@@ -352,7 +443,6 @@ class SubtitleStream(Stream):
 class DataStream(Stream): # ?
     def __init__(self, raw):
         Stream.__init__(self, raw)
-        # raise NotImplementedError
     
     def _make_output_commands(self, i, o, ext, crf):
         return []
