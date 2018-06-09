@@ -1,8 +1,10 @@
 import os
 import math
-from pathlib import Path
 import subprocess as sp
-from ._utils import ffmpeg_command
+from ._utils import FFMPEG_COMMAND
+from ._utils import SUPPORTED_VIDEO_EXTENTIONS
+
+
 
 class Container:
     """A Container wraps a file that contains several multimedia 
@@ -34,7 +36,7 @@ class Container:
     @property
     def extention(self) -> str:
         """The file extention."""
-        return str(Path(self._raw["filename"]).suffix)
+        return os.path.splitext(self._raw["filename"])[-1]
     
     @property
     def _default_path(self) -> str:
@@ -99,17 +101,30 @@ class Container:
     
     @path.setter
     def path(self, path: str):
+        """Property setter for self.path."""
         if os.path.exists(path):
-            raise ValueError(f"The path '{path}' is already exists")
+            raise ValueError(f"The path '{path}' already exists")
         else:
             self._raw['filename'] = path
+
+    @extention.setter
+    def extention(self, ext: str):
+        """Property setter for self.extention."""
+        if ext in SUPPORTED_VIDEO_EXTENTIONS:
+            root, _ = os.path.splitext(self.path)
+            self.path = root + ext
+        else:
+            ValueError(f"The extention '{ext}' is not supported.")
 
     def remove_stream(self, function) -> None:
         """Removes streams for which function returns true""" 
         self.streams = [s for s in self.streams if not function(s)]
     
-    def save(self) -> int:
+    def save(self, crf=None) -> int:
         """Saves all changes"""
+        if crf: 
+            crf = str(crf)
+
         def _generate_input_paths(inputs):
             return [input_file._raw["default_filename"] for input_file in inputs]
 
@@ -144,7 +159,7 @@ class Container:
             commands = []
             commands += _add_metadata(self, "")  # global metadata
             o = 0  # output specifier index
-            for i, inpt in enumerate(inputs):  # i is input specifier
+            for i, inpt in enumerate(inputs):  # i is an input specifier
                 # every inpt is an object:
                 # - 'self' Container
                 # - 'other' Container's Stream
@@ -153,9 +168,9 @@ class Container:
                     raise EOFError  # TODO Error
                 if inpt is self:  # inpt is 'self' Contaier
                     for stream in filter(lambda x: x.container is self, inpt.streams):
-                        commands += stream._make_output_commands(i, o, self.extention)
+                        commands += stream._make_output_commands(i, o, self.extention, crf)
                 else:  # inpt is 'other' Container's Stream OR 'outer' Stream
-                    commands += inpt._make_output_commands(i, o, self.extention)
+                    commands += inpt._make_output_commands(i, o, self.extention, crf)
                 o += 1
             return commands
 
@@ -176,7 +191,7 @@ class Container:
             
         inputs = [self] + [s for s in self.streams if not s.inner]
         call = []
-        call += ffmpeg_command
+        call += FFMPEG_COMMAND
         call += _input_paths_and_their_options(inputs)
         call += _generate_output_options(inputs)
 
@@ -185,9 +200,9 @@ class Container:
             path = _choose_temp_path(self.path)
         else:
             path = self.path
-        
+
         call += [path]
-        # print(call)
+        print(call)
         response = sp.call(call)
 
         if self.path == self._default_path:
