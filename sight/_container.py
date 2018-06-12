@@ -11,9 +11,18 @@ class Container:
     streams.
     """
     # def __init__(self, format_, chapters, streams):
-    def __init__(self, path: str):
-        self._init(path)
-
+    def __init__(self, *streams, path=None, ):
+        if path is not None:
+            self._init(path)
+        else:
+            self._raw = {}
+            self.chapters = ()
+            self.streams = []
+            self.metadata = {}
+            self._raw["default_filename"] = self._raw["filename"] = self._raw.get("filename")
+    
+        self.streams += [s for s in streams]
+    
     def __repr__(self):
         path = self.path
         size = self.human_size
@@ -34,16 +43,19 @@ class Container:
     @property
     def path(self) -> str:
         """The path to the file that is wrapped by the Container"""
-        return self._raw["filename"]
+        return self._raw.get("filename")
     
     @property
     def extention(self) -> str:
         """The file extention."""
-        return os.path.splitext(self._raw["filename"])[-1]
+        if self.path:
+            return os.path.splitext(self._raw["filename"])[-1]
+        else:
+            return None
     
     @property
     def _default_path(self) -> str:
-        return self._raw["default_filename"]
+        return self._raw.get("default_filename")
     
     # @property
     # def format(self):
@@ -53,11 +65,17 @@ class Container:
     @property
     def size(self) -> int:
         """The file size in bytes"""
-        return int(self._raw["size"])
+        if self._raw.get("size"):
+            return int(self._raw["size"])
+        else:
+            return None
+
     
     @property
     def human_size(self) -> str:
         """The human-readable file size."""
+        if self.size is None:
+            return None
         if self.size == 0:
             return "0B"
         size_name = ("B", "KB", "MB", "GB", "TB")
@@ -69,16 +87,24 @@ class Container:
     @property
     def bitrate(self) -> int:
         """The number of bits processed per second"""
-        return int(self._raw["bit_rate"])
+        if self._raw.get("bit_rate"):
+            return int(self._raw["bit_rate"])
+        else:
+            return None
 
     @property
     def duration(self) -> float:
         """The duration in seconds"""
-        return float(self._raw["duration"])
+        if self._raw.get('duration'):
+            return float(self._raw["duration"])
+        else:
+            return None
     
     @property
     def human_duration(self) -> str:
         """The human-readable duration."""
+        if self.duration is None:
+            return None
         minutes, seconds = divmod(self.duration, 60)
         hours, _ = divmod(minutes, 60)
         return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"    
@@ -113,6 +139,8 @@ class Container:
     @extention.setter
     def extention(self, ext: str):
         """Property setter for self.extention."""
+        if self.path is None:
+            raise ValueError(f"Can't add the extention to the path: {self.path}")
         if ext in SUPPORTED_VIDEO_EXTENTIONS:
             root, _ = os.path.splitext(self.path)
             self.path = root + ext
@@ -139,16 +167,7 @@ class Container:
                 if isinstance(x, Container):
                     result += [[]]
                 else:
-                    # streams from another container or outer streams
-                    if x._codec_if_convert_to[self.extention] == "copy":
-                        result += [[]]
-                    else:
-                        result += [
-                            [   # -[v|a|s|d]codec copy|option
-                                f"-{x.codec_type[0]}codec",
-                                x._codec_if_convert_to[self.extention],
-                            ]
-                        ]
+                    result += [x._make_input_commands(self.extention)]
             return result
 
         def _input_paths_and_their_options(inputs):
@@ -156,6 +175,8 @@ class Container:
             input_options = _generate_input_options(inputs)
             input_paths = _generate_input_paths(inputs)
             for options, path in zip(input_options, input_paths):
+                # if path is None: # XXX
+                #     continue
                 result += options  # options are list
                 result += ["-i", path]
             return result
@@ -173,10 +194,15 @@ class Container:
                     raise EOFError  # TODO Error
                 if inpt is self:  # inpt is 'self' Contaier
                     for stream in filter(lambda x: x.container is self, inpt.streams):
-                        commands += stream._make_output_commands(i, o, self.extention, crf)
+                        commands += stream._make_output_commands(
+                            i, o, self.extention, **{'crf':crf}
+                        )
+                        o += 1
                 else:  # inpt is 'other' Container's Stream OR 'outer' Stream
-                    commands += inpt._make_output_commands(i, o, self.extention, crf)
-                o += 1
+                    commands += inpt._make_output_commands(
+                        i, o, self.extention, **{'crf':crf}
+                    )
+                    o += 1
             return commands
 
         def _add_metadata(x, output_specifier):
@@ -193,8 +219,12 @@ class Container:
                 i += 1
                 temp_path = f"{root} (temp {i}){ext}"
             return temp_path
-            
-        inputs = [self] + [s for s in self.streams if not s.inner]
+        
+        if self._default_path is not None:
+            inputs = [self] + [s for s in self.streams if not s.inner]
+        else:
+            inputs = [s for s in self.streams if not s.inner]
+        
         call = []
         call += FFMPEG_COMMAND
         call += _input_paths_and_their_options(inputs)
@@ -207,7 +237,7 @@ class Container:
             path = self.path
 
         call += [path]
-        # print(call)
+        print(call)
         response = sp.call(call)
 
         if self.path == self._default_path:

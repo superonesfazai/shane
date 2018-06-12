@@ -6,6 +6,7 @@ from ._utils import (
     SUPPORTED_VIDEO_CODECS,
     SUPPORTED_AUDIO_CODECS,
     SUPPORTED_SUBTITLE_CODECS,
+    IMAGES_CODECS,
 )
 from ._utils import (
     SUPPORTED_VIDEO_EXTENTIONS,
@@ -13,6 +14,14 @@ from ._utils import (
     SUPPORTED_SUBTITLE_EXTENTIONS,
 )
 from ._utils import FFMPEG_COMMAND
+from ._utils import Something
+
+_fs = '-s' # frame size
+_fps = '-r'
+_map = '-map'
+_crf = '-crf'
+_codec = '-c'
+_vtag = '-vtag'
 
 class Stream:
     """A base class of the streams."""
@@ -20,13 +29,26 @@ class Stream:
         self._raw = raw  # it's json response from ffprobe
         self.metadata = self._raw.get("tags", {})
         self.container = None
-
         # defaults
         self._raw["default_filename"] = self._raw.get("filename")
         self._raw["default_codec_name"] = \
         self._raw["codec_name"] = SIGHT_CODEC_FROM_FFMPEG.get(
             self._raw["codec_name"], self._raw["codec_name"])
-        
+        self._raw['default_filename'] = \
+        self._raw['filename'] = self._raw.get('filename')
+
+        self._commands_history = set()
+
+    def _init(self, path):
+        something = Something(path)
+        self._raw = something.reinit_stream()
+        self.metadata = self._raw.get("tags", {})
+        self.container = None
+        # defaults
+        self._raw["default_filename"] = self._raw.get("filename")
+        self._raw["default_codec_name"] = \
+        self._raw["codec_name"] = SIGHT_CODEC_FROM_FFMPEG.get(
+            self._raw["codec_name"], self._raw["codec_name"])
         self._raw['default_filename'] = \
         self._raw['filename'] = self._raw.get('filename')
 
@@ -69,7 +91,7 @@ class Stream:
     
     @property
     def is_video(self) -> bool:
-        return self.type == "video"
+        return self.type == "video" and self.codec not in IMAGES_CODECS
 
     @property
     def is_audio(self) -> bool:
@@ -83,6 +105,10 @@ class Stream:
     def is_data(self) -> bool:
         return self.type == "data"
 
+    @property
+    def is_image(self) -> bool:
+        self.type == "video" and self.codec in IMAGES_CODECS 
+    
     @property
     def is_default(self) -> bool:
         """Specifies whether the stream is the default stream"""
@@ -177,19 +203,21 @@ class Stream:
                 result[extention] = FFMPEG_CODEC_FROM_SIGHT.get(codec, codec)
         return result
 
-    def _add_metadata(self, output_specifier: str):
-        """Generates command with output metadata
-        
-        `o` - output specifier"""
+    def _map_cmd(self, **kwargs):
+        i_s = kwargs.get('input_specifier_index')
+        return ["-map", f"{i_s}:{self.index}"]
+
+    def _metadata_cmd(self, **kwargs):
+        o_s = kwargs.get('output_specifier_index')
         result = []
         for key, value in self.metadata.items():
-            result += [f"-metadata{output_specifier}", f"{key}={value}"]
+            result += [f"-metadata:s:{o_s}", f"{key}={value}"]
         return result
 
-    def _make_output_commands(self, i, o, ext, crf):
-        pass
-
-    def save_as(self, path=None, **settings):
+    def save(self):
+        """Saves all the changes. Only for outer streams"""
+        crf = settings.get('crf')
+        
         def _choose_temp_path(default_path):
             i = 1
             root, ext = os.path.splitext(default_path)
@@ -199,37 +227,74 @@ class Stream:
                 temp_path = f"{root} (temp {i}){ext}"
             return temp_path
 
+        if self.inner:
+            raise RuntimeError # TODO Error
+
+        ext = os.path.splitext(path)[1] or self.extention
+        
+        call = []
+        call += FFMPEG_COMMAND
+        call += ['-i', self._default_path]
+        call += self._make_output_commands(0, 0, ext, crf=None, to_container=False)
+        
+        if self._default_path == self.path:
+            path = _choose_temp_path(self._default_path)
+        else:
+            path = self.path
+
+        call += [path]
+        
+        # print(call)
+        response = sp.call(call)
+
+        if self._default_path == self.path:
+            temp = self._default_path
+            os.remove(self._default_path)
+            os.rename(path, temp)
+            path = temp
+        self._init(path)
+        return response
+        
+    def extract(self, path=None, **settings):
+        """Extreacts the stream and saves it to the `path`. Returns 
+        the extracted stream"""
         crf = settings.get('crf')
         
+        def _choose_temp_path(default_path):
+            i = 1
+            root, ext = os.path.splitext(default_path)
+            temp_path = f"{root} (temp {i}){ext}"
+            while os.path.exists(temp_path):
+                i += 1
+                temp_path = f"{root} (temp {i}){ext}"
+            return temp_path
+
+        if os.path.exists(path):
+            raise ValueError # TODO
         if self.container:
             input_path = self.container.path 
         else:
             input_path = self._default_path
         
         output_path = path or self.path
+        
+        if input_path == output_path:
+            raise ValueError # TODO Error
+
         ext = os.path.splitext(path)[1] or self.extention
         
         call = []
         call += FFMPEG_COMMAND
         call += ['-i', input_path]
-        call += self._make_output_commands(0, 0, ext, crf=None)
-        
-        if input_path == output_path:
-            path = _choose_temp_path(input_path)
-        else:
-            path = output_path
-
+        call += self._make_output_commands(0, 0, ext, crf=None, to_container=False)
         call += [path]
         
-        print(call)
+        # print(call)
         response = sp.call(call)
-
-        if input_path == output_path:
-            temp = input_path
-            os.remove(input_path)
-            os.rename(path, temp)
-        
-        return response
+        if response: 
+            return response
+        something = Something(path)
+        return something.as_stream()
 
 
 
@@ -238,15 +303,28 @@ class VideoStream(Stream):
     def __init__(self, raw: dict):
         Stream.__init__(self, raw)
         # defaults
+        if self._raw.get("avg_frame_rate", '0/0') != '0/0' :
+            self._raw["default_avg_frame_rate"] = \
+            self._raw["avg_frame_rate"] = eval(self._raw["avg_frame_rate"])
+        else:
+            self._raw["default_avg_frame_rate"] = \
+            self._raw["avg_frame_rate"] = 0
+        
+        self._raw["default_width"] = self._raw["width"]
+        self._raw["default_height"] = self._raw["height"]
+
+    def _init(self, path):
+        Stream._init(self, path)
+        # defaults
         self._raw["default_avg_frame_rate"] = \
         self._raw["avg_frame_rate"] = eval(self._raw["avg_frame_rate"])
         self._raw["default_width"] = self._raw["width"]
-        self._raw["default_height"] = self._raw["height"]
-    
-    @property
-    def bitrate(self) -> int: # TODO
-        """The number of bits processed per second."""
-        raise NotImplementedError
+        self._raw["default_height"] = self._raw["height"]        
+
+    # @property
+    # def bitrate(self) -> int: # TODO
+    #     """The number of bits processed per second."""
+    #     raise NotImplementedError
 
     @property
     def fps(self) -> int:
@@ -283,79 +361,152 @@ class VideoStream(Stream):
     def height(self, value: int):
         """Property setter for self.height."""
         if isinstance(value, int):
-            self._raw["heigth"] = value
+            self._raw["height"] = value
         else:
             raise TypeError("The height value must be an integer.")
     
     def _with_changed_fps(self):
         return self._raw["default_avg_frame_rate"] != self._raw["avg_frame_rate"]
 
-    def _with_chaged_ratio(self):
+    def _with_changed_frame_size(self):
         return (
             self._raw["default_height"] != self._raw["height"]
             or self._raw["default_width"] != self._raw["width"]
         )
 
-    def _make_output_commands(self, i, o, ext, crf):
-        # i — input specifier index
-        # o — output specifier index
-        # ext — extention
-        # crf — The Constant Rate Factor
-        def _fps_command(i, ext):
-            fps_command = f"-r:{i}:{self.index}"
-            fps_value = str(self.fps)
-            return [fps_command, fps_value]
-        
-        def _codec_command(i, ext):
-            codec_command = f"-{self.type[0]}codec:{self.index}"
-            codec_value = self._codec_if_convert_to[ext]
-            if self._with_changed_fps() and codec_value == 'copy':
-                codec_value = self.codec
-            codec_value = FFMPEG_CODEC_FROM_SIGHT.get(codec_value, codec_value)
-            return [codec_command, codec_value]        
-        
-        def _ratio_command(i):
-            frame_size_command = f"-s:{i}:{self.index}"
-            frame_size_value = f"{self.width}x{self.height}"
-            return [frame_size_command, frame_size_value]  
-        
-        def _vtag_command(ext):
-            codec_value = self._codec_if_convert_to[ext]
-            codec_value = FFMPEG_CODEC_FROM_SIGHT.get(codec_value, codec_value)
-
-            if codec_value != 'copy':
-                codec_name_not_copy = codec_value
-            else:
-                codec_name_not_copy = FFMPEG_CODEC_FROM_SIGHT.get(self.codec, self.codec)
-            
-            extention_is_m4v_or_mp4 = (ext == '.m4v' or ext == '.mp4')
-            
-            codec_is_HEVC = any([
-                codec_name_not_copy == 'libx265',
-                codec_name_not_copy == 'hevc',
-            ])
-
-            if codec_is_HEVC and extention_is_m4v_or_mp4:
-                return ['-vtag', 'hvc1'] 
-            else:
+    def _codec_cmd(self, **kwargs):
+        i_s = kwargs.get('input_specifier_index')
+        extention = kwargs.get('extention')
+        input_cmd = True if i_s is None else False
+        codec = f"-{self.type[0]}codec"
+        # codec = f"{_codec}:{self.type[0]}"
+        if input_cmd:
+            self._commands_history.add(codec)
+        else:
+            if codec in self._commands_history:
                 return []
+        index = '' if input_cmd else f':{self.index}'
+        cmd = [
+            f'{codec}{index}',
+            FFMPEG_CODEC_FROM_SIGHT.get(
+                self._codec_if_convert_to[extention], 
+                self._codec_if_convert_to[extention]
+            )
+        ]
+        if cmd[1] == 'copy':
+            if input_cmd:
+                cmd = []
+            elif self._with_changed_fps() or self._with_changed_frame_size():
+                cmd[1] = FFMPEG_CODEC_FROM_SIGHT.get(self.codec, self.codec)
+        return cmd
+
+    def _fps_cmd(self, **kwargs):
+        i_s = kwargs.get('input_specifier_index')
+        extention = kwargs.get('extention')
+
+        input_cmd = True if i_s is None else False
+        if input_cmd:
+            self._commands_history.add(_codec)
+        else:
+            if _fps in self._commands_history: 
+                return []      
+        option = _fps if input_cmd else f"{_fps}:{i_s}:{self.index}"
+        if self._with_changed_fps():
+            cmd = [option, str(self.fps)]
+            return cmd
+        return []
+
+    def _frame_size_cmd(self, **kwargs):
+        i_s = kwargs.get('input_specifier_index')
+        extention = kwargs.get('extention')
+
+        input_cmd = True if i_s is None else False
+        if input_cmd:
+            self._commands_history.add(_codec)
+        else:
+            if _fs in self._commands_history: 
+                return []  
+        option = _fs if input_cmd else f'{_fs}:{i_s}:{self.index}'
+        if self._with_changed_frame_size():
+            cmd = [option, f"{self.width}x{self.height}"]
+            return cmd
+        else:
+            return []
+
+    def _crf_cmd(self, **kwargs):
+        if _crf in self._commands_history: 
+            return []  
+        else:
+            self._commands_history.add(_crf)
         
-        def _crf_command(crf):
-            if crf:
-                return ['-crf', crf]
-            else:
-                return []
-             
+        if kwargs.get('crf'):
+            return [_crf, kwargs['crg']]
+        else:
+            return []
+
+    def _vtag_cmd(self, **kwargs):
+        if _vtag in self._commands_history: 
+            return []  
+        else:
+            self._commands_history.add(_vtag)
+        extention = kwargs.get('extention')
+        codec = FFMPEG_CODEC_FROM_SIGHT.get(
+            self._codec_if_convert_to[extention], 
+            self._codec_if_convert_to[extention]
+        )
+        if codec == 'copy':
+            codec = FFMPEG_CODEC_FROM_SIGHT.get(
+                self.codec, 
+                self.codec
+            )
+        is_m4v_or_mp4 = (extention == '.m4v' or extention == '.mp4')
+        is_hevc = (codec == 'libx265' or codec == 'hevc')
+        if is_hevc and is_m4v_or_mp4:
+            return [_vtag, 'hvc1'] 
+        else:
+            return []
+
+    def _make_input_commands(self, extention):
+        commands_functions = [
+
+        ]
+        kwargs = {
+            'extention': extention,
+        }
         commands = []
-        commands += _fps_command(i, ext)
-        commands += _codec_command(i, ext)
-        commands += _crf_command(crf)
-        commands += _ratio_command(i)
-        commands += _vtag_command(ext)
-        # commands += self._default_command(i)  # TODO
-        commands += ["-map", f"{i}:{self.index}"]
-        commands += self._add_metadata(output_specifier=f":s:{o}")
-        return commands
+        for func in commands_functions:
+            commands += func(**kwargs)
+        return commands 
+
+
+    def _make_output_commands(self, i_s, o_s, extention, **settings):
+        commands_functions = [
+            self._codec_cmd, 
+            self._fps_cmd, 
+            self._frame_size_cmd,
+            self._crf_cmd,
+            self._vtag_cmd,
+            self._map_cmd,
+            self._metadata_cmd,
+        ]
+        commands = []
+        kwargs = {
+            'input_specifier_index': i_s,
+            'output_specifier_index': o_s,
+            'extention': extention,
+            'crf': settings.get('crf'),
+        }
+        for func in commands_functions:
+            commands += func(**kwargs)
+        return commands 
+
+    def __repr__(self):
+        return (self.__class__.__name__ + "("
+            f"path={self.path}, codec={self.codec}, fps={self.fps}, " + 
+            f"width={self.width}, height={self.height}, " +
+            f"language={self.metadata.get('language')}" +
+            ")"
+        )
 
 
 
@@ -363,7 +514,7 @@ class AudioStream(Stream):
     """An audio stream."""
     def __init__(self, raw: dict):
         Stream.__init__(self, raw)
-    
+
     @property
     def channels(self) -> int:
         """The number of channels."""
@@ -374,38 +525,81 @@ class AudioStream(Stream):
         """The audio sample rate."""
         return float(self._raw["sample_rate"])
 
-    @property
-    def bitrate(self) -> int:
-        """The number of bits processed per second."""
-        return int(self._raw["bit_rate"])
+    # @property
+    # def bitrate(self) -> int:
+    #     """The number of bits processed per second."""
+    #     return int(self._raw["bit_rate"])
 
-    @bitrate.setter
-    def bitrate(self, value: int):
-        """Property setter for self.height."""
-        if isinstance(value, int):
-            self._raw["bit_rate"] = value
-        else:
-            raise TypeError("The bitrate value must be an integer.")
+    # @bitrate.setter
+    # def bitrate(self, value: int):
+    #     """Property setter for self.height."""
+    #     if isinstance(value, int):
+    #         self._raw["bit_rate"] = value
+    #     else:
+    #         raise TypeError("The bitrate value must be an integer.")
 
     # TODO @sample_rate.setter
     # TODO @channels.setter
-   
-    def _make_output_commands(self, i, o, ext, crf):
-        def _codec_command(i, ext):
-            codec_command = f"-{self.type[0]}codec:{self.index}"
-            codec_value = self._codec_if_convert_to[ext]
-            codec_value = FFMPEG_CODEC_FROM_SIGHT.get(codec_value, codec_value)
-            return [codec_command, codec_value]
-        
+
+    def _codec_cmd(self, **kwargs):
+        i_s = kwargs.get('input_specifier_index')
+        extention = kwargs.get('extention')
+        input_cmd = True if i_s is None else False
+        # codec = f"{_codec}:{self.type[0]}"
+        codec = f"-{self.type[0]}codec"
+        if input_cmd:
+            self._commands_history.add(codec)
+        else:
+            if codec in self._commands_history:
+                return []
+        index = '' if input_cmd else f':{self.index}'
+        cmd = [
+            f'{codec}{index}',
+            FFMPEG_CODEC_FROM_SIGHT.get(
+                self._codec_if_convert_to[extention], 
+                self._codec_if_convert_to[extention]
+            )
+        ]
+        if input_cmd and cmd[1] == 'copy':
+            cmd = []
+        return cmd
+    
+    def _make_input_commands(self, extention):
+        commands_functions = [
+
+        ]
+        kwargs = {
+            'extention': extention,
+        }
         commands = []
-        # TODO: bitrate
-        # TODO: channels
-        # TODO: sample_rate
-        # commands += self._default_command(i) # TODO
-        commands += _codec_command(i, ext)
-        commands += ["-map", f"{i}:{self.index}"]
-        commands += self._add_metadata(output_specifier=f":s:{o}")
-        return commands
+        for func in commands_functions:
+            commands += func(**kwargs)
+        return commands 
+
+    def _make_output_commands(self, i_s, o_s, extention, **settings):
+        commands_functions = [
+            self._codec_cmd, 
+            self._map_cmd,
+            self._metadata_cmd,
+        ]
+        commands = []
+        kwargs = {
+            'input_specifier_index': i_s,
+            'output_specifier_index': o_s,
+            'extention': extention,
+            'crf': settings.get('crf'),
+        }
+        for func in commands_functions:
+            commands += func(**kwargs)
+        return commands 
+
+    def __repr__(self):
+        return (self.__class__.__name__ + "("
+            f"path={self.path}, codec={self.codec}, channels={self.channels}, " + 
+            f"sample_rate={self.sample_rate}, " +
+            f"language={self.metadata.get('language')}" +
+            ")"
+        )
 
 
 
@@ -424,27 +618,75 @@ class SubtitleStream(Stream):
         """Property setter for self.is_forced."""
         self._raw["disposition"]["forced"] = 1 if value is True else 0
 
-    def _make_output_commands(self, i, o, ext, crf):
-        def _codec_command(i, ext):
-            codec_command = f"-{self.type[0]}codec:{self.index}"
-            codec_value = self._codec_if_convert_to[ext]
-            codec_value = FFMPEG_CODEC_FROM_SIGHT.get(codec_value, codec_value)
-            return [codec_command, codec_value]
+    def _codec_cmd(self, **kwargs):
+        i_s = kwargs.get('input_specifier_index')
+        extention = kwargs.get('extention')
+        input_cmd = True if i_s is None else False
+        # codec = f"{_codec}:{self.type[0]}"
+        codec = f"-{self.type[0]}codec"
+        if input_cmd:
+            self._commands_history.add(codec)
+        else:
+            if codec in self._commands_history:
+                return []
+        index = '' if input_cmd else f':{self.index}'
+        cmd = [
+            f'{codec}{index}',
+            FFMPEG_CODEC_FROM_SIGHT.get(
+                self._codec_if_convert_to[extention], 
+                self._codec_if_convert_to[extention]
+            )
+        ]
+        if input_cmd and cmd[1] == 'copy':
+            cmd = []
+        return cmd
+
+    def _make_input_commands(self, extention):
+        commands_functions = [
+            # self._codec_cmd, 
+        ]
+        kwargs = {
+            'extention': extention,
+        }
         commands = []
-        # commands += self._forced_command(i) # TODO
-        # commands += self._default_command(i) # TODO
-        commands += _codec_command(i, ext)
-        commands += ["-map", f"{i}:{self.index}"]
-        commands += self._add_metadata(output_specifier=f":s:{o}")
-        return commands
-    
+        for func in commands_functions:
+            commands += func(**kwargs)
+        return commands 
+
+
+    def _make_output_commands(self, i_s, o_s, extention, **settings):
+        commands_functions = [
+            self._codec_cmd, 
+            self._map_cmd,
+            self._metadata_cmd,
+        ]
+        commands = []
+        kwargs = {
+            'input_specifier_index': i_s,
+            'output_specifier_index': o_s,
+            'extention': extention,
+            'crf': settings.get('crf'),
+        }
+        for func in commands_functions:
+            commands += func(**kwargs)
+        return commands  
+
+    def __repr__(self):
+        return (self.__class__.__name__ + "("
+            f"path={self.path}, codec={self.codec}, is_forced={self.is_forced}, " + 
+            f"language={self.metadata.get('language')}" +
+            ")"
+        )
+
 
 
 class DataStream(Stream): # ?
     def __init__(self, raw):
         Stream.__init__(self, raw)
     
-    def _make_output_commands(self, i, o, ext, crf):
+    def _make_output_commands(self, i_s, o_s, extention, **settings):
+        return []
+    def _make_input_commands(self, extention):
         return []
 
 
@@ -452,4 +694,8 @@ class DataStream(Stream): # ?
 class ImageStream(Stream): # ?
     def __init__(self, raw):
         Stream.__init__(self, raw)
-        raise NotImplementedError
+        # raise NotImplementedError
+    def _make_output_commands(self, i_s, o_s, extention, **settings):
+        return []
+    def _make_input_commands(self, extention):
+        return []

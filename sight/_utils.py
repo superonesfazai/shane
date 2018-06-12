@@ -13,18 +13,20 @@ FFPROBE_COMMAND = [
 ]
 FFMPEG_COMMAND = [
     FFMPEG, 
-    "-loglevel", "quiet",
+    "-y",
+    # "-loglevel", "quiet",
     ]
 
 # valid output extentions
 SUPPORTED_VIDEO_EXTENTIONS = [".mkv", ".m4v", ".mp4"]
-SUPPORTED_AUDIO_EXTENTIONS = [".aac", ".ac3", ".m4a"]
+SUPPORTED_AUDIO_EXTENTIONS = [".aac", ".ac3"]
 SUPPORTED_SUBTITLE_EXTENTIONS = [".srt"]
 
 SUPPORTED_VIDEO_CODECS = ['h264', 'h265']
 SUPPORTED_AUDIO_CODECS = ["aac", "ac3", "flac"]
 SUPPORTED_SUBTITLE_CODECS = ["mov_text", "subrip", "srt", "ass", "ssa" ]#, "dvd_subtitle", "vobsub"]
 
+IMAGES_CODECS = ['mjpeg',]
 
 CONTAINERS_VCODECS = {
     ".mkv": ["h264", 'h265'], 
@@ -38,11 +40,11 @@ CONTAINERS_ACODECS = {
     ".mp4": ["aac", "alac"],
     ".ac3": ["ac3"],
     ".aac": ["aac"],
-    ".m4a": ["aac", "alac"],
+    # ".m4a": ["aac", "alac"],
 }
 
 CONTAINERS_SCODECS = {
-    ".mkv": ["subrip", "srt", "ass", "ssa", "dvd_subtitle", "vobsub"],
+    ".mkv": ["subrip", "srt", "ass", "ssa", "dvd_subtitle", "vobsub", "hdmv_pgs_subtitle"],
     ".srt": ["subrip", "srt"],
     # FFmpeg's MP4 muxer does not support sub formats other than mov_text.
     ".m4v": ["mov_text"],
@@ -70,9 +72,12 @@ def make_stream(raw):
         VideoStream, 
         AudioStream, 
         SubtitleStream, 
-        DataStream
+        DataStream,
+        ImageStream,
     )
     if raw["codec_type"] == "video":
+        if raw['codec_name'] in IMAGES_CODECS:
+            return ImageStream(raw)
         return VideoStream(raw)
     elif raw["codec_type"] == "audio":
         return AudioStream(raw)
@@ -149,4 +154,4 @@ class Something:
     
     def as_container(self):
         from ._container import Container
-        return Container(self.path)
+        return Container(path=self.path)
