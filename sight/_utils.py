@@ -8,12 +8,12 @@ FFPROBE = os.getenv("FFPROBE_BINARY", "ffprobe")
 
 FFPROBE_COMMAND = [
     FFPROBE, 
-    "-loglevel", "panic", 
+    "-loglevel", "quiet", 
     "-print_format", "json"
 ]
 FFMPEG_COMMAND = [
     FFMPEG, 
-    "-loglevel", "panic",
+    "-loglevel", "quiet",
     ]
 
 # valid output extentions
@@ -60,9 +60,9 @@ SIGHT_CODEC_FROM_FFMPEG = {
 }
 
 
-# def make_container(format_, chapters, streams):
-#     from ._container import Container
-#     return Container(format_, chapters, streams)
+class FFmpegNotFoundError(Exception):
+    pass
+
 
 
 def make_stream(raw):
@@ -116,6 +116,11 @@ def _call_ffprobe(show_what, path):
     return json.loads(response).get(key)
 
 
+def check_ffmpeg():
+    if not sp.call([FFMPEG, '-loglevel', 'quiet']):
+        raise FFmpegNotFoundError("Sight requires FFmpeg installed. ")
+
+
 class Something:
     """It is either a stream or the container. You can not find out 
     by looking at its `path`."""
@@ -137,6 +142,10 @@ class Something:
     def as_stream(self):
         self.first_stream.update(self.format)
         return make_stream(self.first_stream)
+    
+    def reinit_stream(self) -> dict:
+        self.first_stream.update(self.format)
+        return self.first_stream
     
     def as_container(self):
         from ._container import Container

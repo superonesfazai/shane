@@ -23,7 +23,7 @@ class Container:
     def _init(self, path):
         from ._utils import call_chapters, call_format, call_streams, make_stream
         self._raw = call_format(path)
-        self.chapters = call_chapters(path)
+        self.chapters = tuple(call_chapters(path))
         self.streams = list(map(make_stream, call_streams(path)))
         self.metadata = self._raw.get("tags", {})
         for stream in self.streams:
@@ -45,10 +45,10 @@ class Container:
     def _default_path(self) -> str:
         return self._raw["default_filename"]
     
-    @property
-    def format(self):
-        """The container format name"""
-        return self._raw["format_name"]
+    # @property
+    # def format(self):
+    #     """The container format name"""
+    #     return self._raw["format_name"]
 
     @property
     def size(self) -> int:
@@ -83,9 +83,9 @@ class Container:
         hours, _ = divmod(minutes, 60)
         return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"    
     
-    @property
-    def start_time(self) -> float:
-        return float(self._raw["start_time"])  
+    # @property
+    # def start_time(self) -> float:
+    #     return float(self._raw["start_time"])  
       
     @property
     def videos(self) -> tuple:
@@ -119,14 +119,16 @@ class Container:
         else:
             ValueError(f"The extention '{ext}' is not supported.")
 
-    def remove_stream(self, function) -> None:
+    def remove_streams(self, function) -> None:
         """Removes streams for which function returns true""" 
         self.streams = [s for s in self.streams if not function(s)]
+
+    # def trim(start, end, path, **settings): # TODO
+    #     pass
     
-    def save(self, crf=None) -> int:
+    def save(self, **settings) -> int:
         """Saves all changes"""
-        if crf: 
-            crf = str(crf)
+        crf = settings.get('crf')
 
         def _generate_input_paths(inputs):
             return [input_file._raw["default_filename"] for input_file in inputs]
@@ -205,14 +207,15 @@ class Container:
             path = self.path
 
         call += [path]
-        print(call)
+        # print(call)
         response = sp.call(call)
 
         if self.path == self._default_path:
             temp = self.path
             os.remove(self.path)
             os.rename(path, temp)
+            path = temp
 
-        self._init(temp)
+        self._init(path)
         
         return response

@@ -1,9 +1,6 @@
 import os
 from ._utils import Something
-# from ._utils import (
-#     call_format, call_streams, 
-#     call_chapters, make_stream, make_container,
-#     )
+
 
 __all__ = ['open']
 
