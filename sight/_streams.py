@@ -23,6 +23,8 @@ _crf = '-crf'
 _codec = '-c'
 _vtag = '-vtag'
 
+
+
 class Stream:
     """A base class of the streams."""
     def __init__(self, raw: dict):
@@ -104,6 +106,10 @@ class Stream:
     @property
     def is_data(self) -> bool:
         return self.type == "data"
+
+    @property
+    def is_attachment(self) -> bool:
+        return self.type == 'attachment'
 
     @property
     def is_image(self) -> bool:
@@ -213,6 +219,12 @@ class Stream:
         for key, value in self.metadata.items():
             result += [f"-metadata:s:{o_s}", f"{key}={value}"]
         return result
+
+    def _make_input_commands(self, extention):
+        pass
+
+    def _make_output_commands(self, i_s, o_s, extention, **settings):
+        pass
 
     def save(self):
         """Saves all the changes. Only for outer streams"""
@@ -478,7 +490,6 @@ class VideoStream(Stream):
             commands += func(**kwargs)
         return commands 
 
-
     def _make_output_commands(self, i_s, o_s, extention, **settings):
         commands_functions = [
             self._codec_cmd, 
@@ -679,13 +690,13 @@ class SubtitleStream(Stream):
         )
 
 
-
 class DataStream(Stream): # ?
     def __init__(self, raw):
         Stream.__init__(self, raw)
     
     def _make_output_commands(self, i_s, o_s, extention, **settings):
         return []
+        
     def _make_input_commands(self, extention):
         return []
 
@@ -694,8 +705,45 @@ class DataStream(Stream): # ?
 class ImageStream(Stream): # ?
     def __init__(self, raw):
         Stream.__init__(self, raw)
-        # raise NotImplementedError
+
     def _make_output_commands(self, i_s, o_s, extention, **settings):
         return []
+
+    def _make_input_commands(self, extention):
+        return []
+
+
+
+class AttachmentStream(Stream): # ?
+    def __init__(self, raw):
+        Stream.__init__(self, raw)
+
+    def _codec_cmd(self, **kwargs):
+        return [f"tcodec:{self.index}", 'copy']
+       
+    def _make_output_commands(self, i_s, o_s, extention, **settings):
+        commands_functions = [
+            self._codec_cmd, 
+            self._map_cmd,
+            self._metadata_cmd,
+        ]
+        commands = []
+        kwargs = {
+            'input_specifier_index': i_s,
+            'output_specifier_index': o_s,
+            'extention': extention,
+            'crf': settings.get('crf'),
+        }
+        for func in commands_functions:
+            commands += func(**kwargs)
+        return commands  
+
+    def __repr__(self):
+        return (self.__class__.__name__ + "("
+            f"path={self.path}, codec={self.codec}, " + 
+            f"language={self.metadata.get('language')}" +
+            ")"
+        )
+
     def _make_input_commands(self, extention):
         return []
