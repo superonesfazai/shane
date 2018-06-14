@@ -24,27 +24,31 @@ SUPPORTED_SUBTITLE_EXTENTIONS = [".srt"]
 
 SUPPORTED_VIDEO_CODECS = ['h264', 'h265']
 SUPPORTED_AUDIO_CODECS = ["aac", "ac3", "flac"]
-SUPPORTED_SUBTITLE_CODECS = ["mov_text", "subrip", "srt", "ass", "ssa" ]#, "dvd_subtitle", "vobsub"]
+SUPPORTED_SUBTITLE_CODECS = ["mov_text", "subrip", "srt",]
 
-IMAGES_CODECS = ['mjpeg',]
+IMAGES_CODECS = [
+    'mjpeg', 'jpeg2000', 'jpegls', 'mjpegb', 'ljpeg', 
+    'gif', 'tiff', "png",
+]
 
 CONTAINERS_VCODECS = {
-    ".mkv": ["h264", 'h265'], 
-    ".m4v": ["h264", 'h265'],
-    ".mp4": ["h264", 'h265'],
+    ".mkv": ["h264", 'h265', 'theora', 'vp8', 'vp9', "h261", "h262", "h263", "mpeg4", "vc1"], 
+    ".m4v": ["h264", 'h265', "h261", "h262", "h263", "mpeg4"], 
+    ".mp4": ["h264", 'h265', "h261", "h262", "h263", "mpeg4"],
 }
 
 CONTAINERS_ACODECS = {
-    ".mkv": ["aac", "ac3", "flac"],
-    ".m4v": ["aac", "alac"],
-    ".mp4": ["aac", "alac"],
+    ".mkv": ["aac", "ac3", "flac", 'dts', 'wav', 'vorbis', "mp3"],
+    ".m4v": ["aac", "alac", "ac3",],
+    ".mp4": ["aac", "alac", "ac3",],
     ".ac3": ["ac3"],
     ".aac": ["aac"],
     # ".m4a": ["aac", "alac"],
+    '.mka': ["aac", "ac3", "flac", 'dts', 'wav', 'vorbis', "mp3"],
 }
 
 CONTAINERS_SCODECS = {
-    ".mkv": ["subrip", "srt", "ass", "ssa", "dvd_subtitle", "vobsub", "hdmv_pgs_subtitle"],
+    ".mkv": ["subrip", "srt", "ass", "ssa", "dvd_subtitle", "vobsub", "hdmv_pgs_subtitle", 'text', 'webvtt'],
     ".srt": ["subrip", "srt"],
     # FFmpeg's MP4 muxer does not support sub formats other than mov_text.
     ".m4v": ["mov_text"],
@@ -54,11 +58,13 @@ CONTAINERS_SCODECS = {
 
 FFMPEG_CODEC_FROM_SIGHT = {
     'h265': 'libx265',
+    "h264": 'libx264',
 }
 
 SIGHT_CODEC_FROM_FFMPEG = {
     'hevc': 'h265',
-    # 'libx265': 'h265'
+    'libx265': 'h265',
+    'libx264': "h264",
 }
 
 
@@ -74,6 +80,7 @@ def make_stream(raw):
         SubtitleStream, 
         DataStream,
         ImageStream,
+        AttachmentStream,
     )
     if raw["codec_type"] == "video":
         if raw['codec_name'] in IMAGES_CODECS:
@@ -85,6 +92,8 @@ def make_stream(raw):
         return SubtitleStream(raw)
     elif raw["codec_type"] == "data":
         return DataStream(raw)
+    elif raw["codec_type"] == "attachment":
+        return AttachmentStream(raw)
     else:
         raise ValueError("Invalid Stream")
 
