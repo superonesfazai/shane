@@ -165,6 +165,8 @@ class Container:
             result = []
             for x in inputs:
                 if isinstance(x, Container):
+                    if x._default_path.rsplit('.')[-1] == 'avi':
+                        result += [['-fflags', '+genpts']]
                     result += [[]]
                 else:
                     result += [x._make_input_commands(self.extention)]
