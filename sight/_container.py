@@ -1,9 +1,9 @@
 import os
 import math
 import subprocess as sp
-from ._utils import FFMPEG_COMMAND
+# from ._utils import FFMPEG_COMMAND
 from ._utils import SUPPORTED_VIDEO_EXTENTIONS
-
+from ._ffmpeg import FFmpegCompressor
 
 
 class Container:
@@ -46,15 +46,26 @@ class Container:
         return self._raw.get("filename")
     
     @property
+    def is_container(self) -> bool:
+        return isinstance(self, Container)
+    
+    @property
     def extention(self) -> str:
         """The file extention."""
         if self.path:
             return os.path.splitext(self._raw["filename"])[-1]
         else:
             return None
-    
+
     @property
-    def _default_path(self) -> str:
+    def default_extention(self) -> str:
+        """The file extention."""
+        if self.path:
+            return os.path.splitext(self._raw["default_filename"])[-1]
+        else:
+            return None    
+    @property
+    def default_path(self) -> str:
         return self._raw.get("default_filename")
     
     # @property
@@ -69,8 +80,7 @@ class Container:
             return int(self._raw["size"])
         else:
             return None
-
-    
+ 
     @property
     def human_size(self) -> str:
         """The human-readable file size."""
@@ -154,100 +164,118 @@ class Container:
     # def trim(start, end, path, **settings): # TODO
     #     pass
     
+    # def save(self, **settings) -> int:
+    #     """Saves all changes"""
+    #     crf = settings.get('crf')
+
+    #     def _generate_input_paths(inputs):
+    #         return [input_file._raw["default_filename"] for input_file in inputs]
+
+    #     def _generate_input_options(inputs):
+    #         result = []
+    #         for x in inputs:
+    #             if isinstance(x, Container):
+    #                 if x.default_path.rsplit('.')[-1] == 'avi':
+    #                     result += [['-fflags', '+genpts']]
+    #                 result += [[]]
+    #             else:
+    #                 result += [x._make_input_commands(self.extention)]
+    #         return result
+
+    #     def _input_paths_and_their_options(inputs):
+    #         result = []
+    #         input_options = _generate_input_options(inputs)
+    #         input_paths = _generate_input_paths(inputs)
+    #         for options, path in zip(input_options, input_paths):
+    #             # if path is None: # XXX
+    #             #     continue
+    #             result += options  # options are list
+    #             result += ["-i", path]
+    #         return result
+
+    #     def _generate_output_options(inputs):
+    #         commands = []
+    #         commands += _add_metadata(self, "")  # global metadata
+    #         o = 0  # output specifier index
+    #         for i, inpt in enumerate(inputs):  # i is an input specifier
+    #             # every inpt is an object:
+    #             # - 'self' Container
+    #             # - 'other' Container's Stream
+    #             # - 'outer' Stream
+    #             if isinstance(inpt, Container) and inpt is not self:
+    #                 raise EOFError  # TODO Error
+    #             if inpt is self:  # inpt is 'self' Contaier
+    #                 for stream in filter(lambda x: x.container is self, inpt.streams):
+    #                     commands += stream._make_output_commands(
+    #                         i, o, self.extention, **{'crf':crf}
+    #                     )
+    #                     o += 1
+    #             else:  # inpt is 'other' Container's Stream OR 'outer' Stream
+    #                 commands += inpt._make_output_commands(
+    #                     i, o, self.extention, **{'crf':crf}
+    #                 )
+    #                 o += 1
+    #         return commands
+
+    #     def _add_metadata(x, output_specifier):
+    #         result = []
+    #         for key, value in x.metadata.items():
+    #             result += [f"-metadata{output_specifier}", f"{key}={value}"]
+    #         return result
+
+    #     def _choose_temp_path(default_path):
+    #         i = 1
+    #         root, ext = os.path.splitext(default_path)
+    #         temp_path = f"{root} (temp {i}){ext}"
+    #         while os.path.exists(temp_path):
+    #             i += 1
+    #             temp_path = f"{root} (temp {i}){ext}"
+    #         return temp_path
+        
+    #     if self.default_path is not None:
+    #         inputs = [self] + [s for s in self.streams if not s.inner]
+    #     else:
+    #         inputs = [s for s in self.streams if not s.inner]
+        
+    #     call = []
+    #     call += FFMPEG_COMMAND
+    #     call += _input_paths_and_their_options(inputs)
+    #     call += _generate_output_options(inputs)
+
+    #     # if path was not changed
+    #     if self.path == self.default_path:
+    #         path = _choose_temp_path(self.path)
+    #     else:
+    #         path = self.path
+
+    #     call += [path]
+    #     print(call)
+    #     response = sp.call(call)
+
+    #     if self.path == self.default_path:
+    #         temp = self.path
+    #         os.remove(self.path)
+    #         os.rename(path, temp)
+    #         path = temp
+
+    #     self._init(path)
+        
+    #     return response
+
+    def _get_all_input_files(self):
+        if self.default_path is not None:
+            # self container + outer streams
+            return [self] + [s for s in self.streams if not s.inner]
+        else:
+             # only outer streams
+            return [s for s in self.streams if not s.inner]
+    
     def save(self, **settings) -> int:
-        """Saves all changes"""
-        crf = settings.get('crf')
-
-        def _generate_input_paths(inputs):
-            return [input_file._raw["default_filename"] for input_file in inputs]
-
-        def _generate_input_options(inputs):
-            result = []
-            for x in inputs:
-                if isinstance(x, Container):
-                    if x._default_path.rsplit('.')[-1] == 'avi':
-                        result += [['-fflags', '+genpts']]
-                    result += [[]]
-                else:
-                    result += [x._make_input_commands(self.extention)]
-            return result
-
-        def _input_paths_and_their_options(inputs):
-            result = []
-            input_options = _generate_input_options(inputs)
-            input_paths = _generate_input_paths(inputs)
-            for options, path in zip(input_options, input_paths):
-                # if path is None: # XXX
-                #     continue
-                result += options  # options are list
-                result += ["-i", path]
-            return result
-
-        def _generate_output_options(inputs):
-            commands = []
-            commands += _add_metadata(self, "")  # global metadata
-            o = 0  # output specifier index
-            for i, inpt in enumerate(inputs):  # i is an input specifier
-                # every inpt is an object:
-                # - 'self' Container
-                # - 'other' Container's Stream
-                # - 'outer' Stream
-                if isinstance(inpt, Container) and inpt is not self:
-                    raise EOFError  # TODO Error
-                if inpt is self:  # inpt is 'self' Contaier
-                    for stream in filter(lambda x: x.container is self, inpt.streams):
-                        commands += stream._make_output_commands(
-                            i, o, self.extention, **{'crf':crf}
-                        )
-                        o += 1
-                else:  # inpt is 'other' Container's Stream OR 'outer' Stream
-                    commands += inpt._make_output_commands(
-                        i, o, self.extention, **{'crf':crf}
-                    )
-                    o += 1
-            return commands
-
-        def _add_metadata(x, output_specifier):
-            result = []
-            for key, value in x.metadata.items():
-                result += [f"-metadata{output_specifier}", f"{key}={value}"]
-            return result
-
-        def _choose_temp_path(default_path):
-            i = 1
-            root, ext = os.path.splitext(default_path)
-            temp_path = f"{root} (temp {i}){ext}"
-            while os.path.exists(temp_path):
-                i += 1
-                temp_path = f"{root} (temp {i}){ext}"
-            return temp_path
-        
-        if self._default_path is not None:
-            inputs = [self] + [s for s in self.streams if not s.inner]
-        else:
-            inputs = [s for s in self.streams if not s.inner]
-        
-        call = []
-        call += FFMPEG_COMMAND
-        call += _input_paths_and_their_options(inputs)
-        call += _generate_output_options(inputs)
-
-        # if path was not changed
-        if self.path == self._default_path:
-            path = _choose_temp_path(self.path)
-        else:
-            path = self.path
-
-        call += [path]
-        print(call)
-        response = sp.call(call)
-
-        if self.path == self._default_path:
-            temp = self.path
-            os.remove(self.path)
-            os.rename(path, temp)
-            path = temp
-
-        self._init(path)
-        
+        compressor = FFmpegCompressor()
+        compressor.add_input_files(*self._get_all_input_files())
+        compressor.add_output_path(self.path)
+        compressor.add_settings(**settings)
+        response = compressor.run()
+        self._init(self.path)
         return response
+
