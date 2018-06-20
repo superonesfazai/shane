@@ -14,7 +14,7 @@ FFPROBE_COMMAND = [
 FFMPEG_COMMAND = [
     FFMPEG, 
     "-y",
-    # "-loglevel", "quiet",
+    "-loglevel", "quiet",
     ]
 
 # valid output extentions
@@ -54,6 +54,12 @@ CONTAINERS_SCODECS = {
     ".m4v": ["mov_text"],
     ".mp4": ["mov_text"],
 }
+
+# CONTAINERS_TCODECS = {
+#     ".mkv": ["ttf",],
+#     # ".m4v": ["ttf",],
+#     # ".mp4": ["ttf",],
+# }
 
 
 FFMPEG_CODEC_FROM_SIGHT = {
