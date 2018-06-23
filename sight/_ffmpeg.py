@@ -6,7 +6,6 @@ from ._utils import (
     CONTAINERS_VCODECS, 
     CONTAINERS_ACODECS, 
     CONTAINERS_SCODECS, 
-    CONTAINERS_TCODECS,
 
     FFMPEG_CODEC_FROM_SIGHT, 
     SIGHT_CODEC_FROM_FFMPEG,
@@ -20,6 +19,17 @@ from ._utils import (
     SUPPORTED_AUDIO_EXTENTIONS,
     SUPPORTED_SUBTITLE_EXTENTIONS,
 )
+
+
+
+def vstream_with_changed_fps(self, stream):
+    return stream.default_fps != stream.fps
+
+
+def vstream_with_changed_frame_size(self, stream):
+    return stream.default_height != stream.height or \
+    stream.deafault_width != stream.width
+
 
 
 def codec_if_convert_to_extention(stream, extention):
