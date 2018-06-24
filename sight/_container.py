@@ -11,14 +11,9 @@ class Container:
     """
     def __init__(self, *streams, path=None, ):
         if path is not None:
-            self._init(path)
+            self._init_from_path(path)
         else:
-            self._raw = {}
-            self.chapters = ()
-            self.streams = []
-            self.metadata = {}
-            self._raw["default_filename"] = self._raw["filename"] = self._raw.get("filename")
-    
+            self._empty_init()
         self.streams += [s for s in streams]
     
     def __repr__(self):
@@ -27,21 +22,32 @@ class Container:
         duration = self.human_duration
         return f"Container(path={path}, size={size}, duration={duration})"
 
-    def _init(self, path):
-        from ._utils import call_chapters, call_format, call_streams, make_stream
-        self._raw = call_format(path)
+    def _init_from_path(self, path):
+        from ._utils import (
+            call_chapters, call_format, call_streams, make_stream
+        )
+        self._ffprobe = call_format(path)
         self.chapters = tuple(call_chapters(path))
         self.streams = list(map(make_stream, call_streams(path)))
-        self.metadata = self._raw.get("tags", {})
+        self.metadata = self._ffprobe.get("tags", {})
         for stream in self.streams:
             stream.container = self
-        # defaults
-        self._raw["default_filename"] = self._raw["filename"]
-        
+        self._defaults = self._ffprobe.copy()
+    
+    def _empty_init(self):
+        self._ffprobe = {}
+        self._defaults = {}
+        self.chapters = ()
+        self.streams = []
+        self.metadata = {}
+        # self._defaults["default_filename"] = \
+        # self._ffprobe["filename"] = \
+        # self._ffprobe.get("filename")
+
     @property
     def path(self) -> str:
         """The path to the file that is wrapped by the Container"""
-        return self._raw.get("filename")
+        return self._ffprobe.get("filename")
     
     @property
     def is_container(self) -> bool:
@@ -51,32 +57,20 @@ class Container:
     def extention(self) -> str:
         """The file extention."""
         if self.path:
-            return os.path.splitext(self._raw["filename"])[-1]
+            return os.path.splitext(self.path)[-1]
         else:
             return None
 
-    @property
-    def default_extention(self) -> str:
-        """The file extention."""
-        if self.path:
-            return os.path.splitext(self._raw["default_filename"])[-1]
-        else:
-            return None    
-    
-    @property
-    def default_path(self) -> str:
-        return self._raw.get("default_filename")
-    
     # @property
     # def format(self):
     #     """The container format name"""
-    #     return self._raw["format_name"]
+    #     return self._ffprobe["format_name"]
 
     @property
     def size(self) -> int:
         """The file size in bytes"""
-        if self._raw.get("size"):
-            return int(self._raw["size"])
+        if self._ffprobe.get("size"):
+            return int(self._ffprobe["size"])
         else:
             return None
  
@@ -96,16 +90,16 @@ class Container:
     @property
     def bitrate(self) -> int:
         """The number of bits processed per second"""
-        if self._raw.get("bit_rate"):
-            return int(self._raw["bit_rate"])
+        if self._ffprobe.get("bit_rate"):
+            return int(self._ffprobe["bit_rate"])
         else:
             return None
 
     @property
     def duration(self) -> float:
         """The duration in seconds"""
-        if self._raw.get('duration'):
-            return float(self._raw["duration"])
+        if self._ffprobe.get('duration'):
+            return float(self._ffprobe["duration"])
         else:
             return None
     
@@ -120,7 +114,7 @@ class Container:
     
     # @property
     # def start_time(self) -> float:
-    #     return float(self._raw["start_time"])  
+    #     return float(self._ffprobe["start_time"])  
       
     @property
     def videos(self) -> tuple:
@@ -136,25 +130,52 @@ class Container:
     def subtitles(self) -> tuple:
         """All subtitle streams in the container"""
         return tuple([stream for stream in self.streams if stream.is_subtitle])
+
+    @property
+    def data(self) -> tuple:
+        """All data streams in the container"""
+        return tuple([stream for stream in self.streams if stream.is_data])    
+
+    @property
+    def attachments(self) -> tuple:
+        """All attachment streams in the container"""
+        return tuple([stream for stream in self.streams if stream.is_attachment])    
+
+    @property
+    def images(self) -> tuple:
+        """All image streams in the container"""
+        return tuple([stream for stream in self.streams if stream.is_image])    
+
+    @property
+    def default_extention(self) -> str:
+        """The file extention."""
+        if self.default_path:
+            return os.path.splitext(self.default_path)[-1]
+        else:
+            return None    
     
+    @property
+    def default_path(self) -> str:
+        return self._defaults.get("filename")
+        
     @path.setter
     def path(self, path: str):
         """Property setter for self.path."""
         if os.path.exists(path):
             raise ValueError(f"The path '{path}' already exists")
         else:
-            self._raw['filename'] = path
+            self._ffprobe['filename'] = path
 
     @extention.setter
-    def extention(self, ext: str):
+    def extention(self, x: str):
         """Property setter for self.extention."""
         if self.path is None:
             raise ValueError(f"Can't add the extention to the path: {self.path}")
-        if ext in SUPPORTED_VIDEO_EXTENTIONS:
+        if x in SUPPORTED_VIDEO_EXTENTIONS:
             root, _ = os.path.splitext(self.path)
-            self.path = root + ext
+            self.path = root + x
         else:
-            ValueError(f"The extention '{ext}' is not supported.")
+            ValueError(f"The extention '{x}' is not supported.")
 
     def remove_streams(self, function) -> None:
         """Removes streams for which function returns true""" 
@@ -177,6 +198,6 @@ class Container:
         compressor.add_output_path(self.path)
         compressor.add_settings(**settings)
         response = compressor.run()
-        self._init(self.path)
+        self._init_from_path(self.path)
         return response
 
