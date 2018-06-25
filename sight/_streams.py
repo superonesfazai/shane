@@ -4,7 +4,6 @@ import subprocess as sp
 from ._ffmpeg import FFmpegCompressor
 from ._utils import (
     IMAGES_CODECS, 
-    SIGHT_CODEC_FROM_FFMPEG,
     
     SUPPORTED_AUDIO_EXTENTIONS,
     SUPPORTED_SUBTITLE_EXTENTIONS,

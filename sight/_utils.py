@@ -55,23 +55,6 @@ CONTAINERS_SCODECS = {
     ".mp4": ["mov_text"],
 }
 
-# CONTAINERS_TCODECS = {
-#     ".mkv": ["ttf",],
-#     # ".m4v": ["ttf",],
-#     # ".mp4": ["ttf",],
-# }
-
-
-FFMPEG_CODEC_FROM_SIGHT = {
-    'h265': 'libx265',
-    "h264": 'libx264',
-}
-
-SIGHT_CODEC_FROM_FFMPEG = {
-    'hevc': 'h265',
-    'libx265': 'h265',
-    'libx264': "h264",
-}
 
 
 class FFmpegNotFoundError(Exception):
@@ -113,7 +96,7 @@ def call_format(path):
 
 
 def call_chapters(path):
-    return _call_ffprobe("chapters", path)
+    response = _call_ffprobe("chapters", path)
     for chapter in response:
         yield {
             "title": chapter.get("title"),

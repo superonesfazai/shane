@@ -7,9 +7,6 @@ from ._utils import (
     CONTAINERS_ACODECS, 
     CONTAINERS_SCODECS, 
 
-    FFMPEG_CODEC_FROM_SIGHT, 
-    SIGHT_CODEC_FROM_FFMPEG,
-
     SUPPORTED_VIDEO_CODECS,
     SUPPORTED_AUDIO_CODECS,
     SUPPORTED_SUBTITLE_CODECS,
@@ -218,12 +215,9 @@ class FFmpegCompressor:
             return []
         extention = self._get_output_extention()
         option = f"-{x.type[0]}codec:{x.index}" 
-        argument = FFMPEG_CODEC_FROM_SIGHT.get(
-            codec_if_convert_to_extention(x, extention), 
-            codec_if_convert_to_extention(x, extention)
-        )
+        argument = codec_if_convert_to_extention(x, extention)
         if x.is_video and (x.with_changed_fps() or x.with_changed_frame_size()):
-            argument = FFMPEG_CODEC_FROM_SIGHT.get(x.codec, x.codec)
+            argument = x.codec
         return [option, argument]
 
     def command_map(self, x):
@@ -272,15 +266,9 @@ class FFmpegCompressor:
         if not x.is_video:
             return []
         extention = self._get_output_extention()
-        codec = FFMPEG_CODEC_FROM_SIGHT.get(
-            codec_if_convert_to_extention(x, extention), 
-            codec_if_convert_to_extention(x, extention)
-        )
+        codec = codec_if_convert_to_extention(x, extention)
         if codec == 'copy':
-            codec = FFMPEG_CODEC_FROM_SIGHT.get(
-                x.codec, 
-                x.codec
-            )
+            codec = x.codec
         is_m4v_or_mp4 = (extention == '.m4v' or extention == '.mp4')
         is_hevc = codec in ['libx265', 'hevc']
         if is_hevc and is_m4v_or_mp4:
