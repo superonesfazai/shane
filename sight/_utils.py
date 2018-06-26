@@ -57,11 +57,6 @@ CONTAINERS_SCODECS = {
 
 
 
-class FFmpegNotFoundError(Exception):
-    pass
-
-
-
 def make_stream(raw):
     from ._streams import (
         VideoStream, 
@@ -120,8 +115,10 @@ def _call_ffprobe(show_what, path):
 
 
 def check_ffmpeg():
-    if not sp.call([FFMPEG, '-loglevel', 'quiet']):
-        raise FFmpegNotFoundError("Sight requires FFmpeg installed. ")
+    try:
+        sp.run([FFMPEG, '-loglevel', 'quiet'])
+    except FileNotFoundError:
+        raise FileNotFoundError("Sight requires FFmpeg installed.")
 
 
 class Something:
