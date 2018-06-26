@@ -3,8 +3,10 @@
 
 *.egg-info
 
-!README.md
 *.md
+!README.md
 
+dist/
+build/
 venv/
 __pycache__
