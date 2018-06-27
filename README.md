@@ -68,7 +68,7 @@ Note, that only **Python 3.6+** is supported.
 ### Extract subtitles:
 ```
 >>> subtitles = container.subtitles[0]
->>> subtitles = subtitles.extreact(path='new_path/to/rus_subtitles.srt')
+>>> subtitles = subtitles.extract(path='new_path/to/rus_subtitles.srt')
 ```
 
 ### Save the changes:
