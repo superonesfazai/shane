@@ -1,4 +1,4 @@
-
+# Sight
 
 Sight is a handy module for converting and demuxing video files.
 
