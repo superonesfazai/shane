@@ -149,7 +149,7 @@ class FFmpegCompressor:
 
     def _run_command(self, command, temp_output_path):
         command.append(temp_output_path)
-        print(command)
+        # print(command)
         response = sp.run(command)
         if response:
             self._remove_and_rename_path(temp_output_path, self.output_path)
