@@ -1,6 +1,6 @@
 
 def mkv(container):
-    """Changes the `container` format to the M4V format."""
+    """Changes the `container` format to the MKV format."""
     container.extention = '.mkv'
     container.save()
     return container
