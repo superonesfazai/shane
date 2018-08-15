@@ -1,6 +1,6 @@
-# Sight
+# Shane
 
-Sight is a handy module for converting and demuxing video files.
+Shane is a handy module for converting and demuxing video files.
 
 - Change a container for MKV or MP4 without slow re-encoding.
 - Add new streams to the container (and delete other ones easily)
@@ -30,9 +30,9 @@ Install [FFmpeg](http://ffmpeg.org). You can install it using Homebrew on Mac:
 brew install ffmpeg --with-x265
 ```
 
-Install Sight with pip:
+Install Shane with pip:
 ```
-pip install sight
+pip install shane
 ```
 
 Note, that only **Python 3.6+** is supported.
@@ -42,8 +42,8 @@ Note, that only **Python 3.6+** is supported.
 
 ### Open the media file:
 ```
->>> import sight
->>> container = sight.open('path/to/file.mkv')
+>>> import shane
+>>> container = shane.open('path/to/file.mkv')
 ```
 
 ### Change the format to another one:
@@ -60,7 +60,7 @@ Note, that only **Python 3.6+** is supported.
 
 ### Add subtitles:
 ```
->>> subtitles = sight.open('path/to/fre_subtitles.srt')
+>>> subtitles = shane.open('path/to/fre_subtitles.srt')
 >>> subtitles.metadata['language'] = 'fre'
 >>> container.streams.append(subtitles)
 ```
@@ -82,7 +82,7 @@ After all the changes, the file must be saved.
 
 ## USAGE
 
-Sight operates with two kinds of objects: *streams* and *containers*. Streams are *separate* video/audio/subtitles files and containers contain a number of streams. 
+Shane operates with two kinds of objects: *streams* and *containers*. Streams are *separate* video/audio/subtitles files and containers contain a number of streams. 
 
 ### Open a file
 
@@ -90,22 +90,22 @@ The `open` function chooses the object type that needs to be created itself.
 
 Open the file with several video/audio/subtitles tracks in it:
 ```
->>> container = sight.open('path/to/file.mkv')
+>>> container = shane.open('path/to/file.mkv')
 Container(path=path/to/file.mkv, size=142.65 MB, duration=00:02:00)
 ```
 
 Open the file that contains only video, without any audio or subtitles:
 ```
->>> video_stream = sight.open('path/to/only_video.mkv')
+>>> video_stream = shane.open('path/to/only_video.mkv')
 VideoStream(path=path/to/file.mkv, codec=h264, fps=23.97598627787307, width=1272, height=720, language=eng)
 ```
 
 Open an audio or subtitles file:
 ```
->>> audio_stream = sight.open('path/to/audio.aac')
+>>> audio_stream = shane.open('path/to/audio.aac')
 AudioStream(path=path/to/audio.aac, codec=aac, channels=2, sample_rate=48000.0, language=eng)
 
->>> subtitle_stream = sight.open('path/to/subtitles.srt')
+>>> subtitle_stream = shane.open('path/to/subtitles.srt')
 SubtitleStream(path=path/to/subtitles.srt, codec=subrip, is_forced=False, language=rus)
 ```
 ### Discover the media information

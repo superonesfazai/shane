@@ -2,12 +2,12 @@ import re
 import sys
 from setuptools import setup, find_packages
 
-assert sys.version_info >= (3, 6, 0), 'sight requires Python 3.6+'
+assert sys.version_info >= (3, 6, 0), 'shane requires Python 3.6+'
 from pathlib import Path
 
 
 BASE = Path(__file__).parent
-NAME = 'sight'
+NAME = 'shane'
 
 
 def get_long_description() -> str:
@@ -31,7 +31,7 @@ setup(
     author='Dima Koskin',
     author_email='dmksknn@gmail.com',
     python_requires='>=3.6',
-    url='https://github.com/dmkskn/sight',
+    url='https://github.com/dmkskn/shane',
     packages=find_packages(),
     license='MIT',
     keywords='video metadata converting muxing ffmpeg',

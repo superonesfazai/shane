@@ -118,7 +118,7 @@ def check_ffmpeg():
     try:
         sp.run([FFMPEG, '-loglevel', 'quiet'])
     except FileNotFoundError:
-        raise FileNotFoundError("Sight requires FFmpeg installed.")
+        raise FileNotFoundError("Shane requires FFmpeg installed.")
 
 
 class Something:

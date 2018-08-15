@@ -3,10 +3,13 @@ import sys
 import unittest
 from pathlib import Path
 
-import sight
+import shane
 
 BASE = Path(__file__).parent
-EXAMPLES = BASE / "examples"
+SAMPLES = BASE / "examples"
+BASE = Path(__file__).parent
+SAMPLES = BASE / "samples"
+CONTAINERS_DIR = SAMPLES / "containers"
 
 
 FILES_FOR_TESTS = [
@@ -25,41 +28,41 @@ FILES_FOR_TESTS = [
     "srt_stream.srt",
 ]
 for file in FILES_FOR_TESTS:
-    assert Path(EXAMPLES / file).exists(), \
-    f"Path '{Path(EXAMPLES / file)}' doesn't exists."
+    assert Path(SAMPLES / file).exists(), \
+    f"Path '{Path(SAMPLES / file)}' doesn't exists."
 
 
 class TestOpenFile(unittest.TestCase):
     def test_open_container(self):
-        mkv = sight.open(EXAMPLES / "mkv_container.mkv")
-        mp4 = sight.open(EXAMPLES / "mp4_container.mp4")
-        avi = sight.open(EXAMPLES / "avi_container.avi")
+        mkv = shane.open(SAMPLES / "mkv_container.mkv")
+        mp4 = shane.open(SAMPLES / "mp4_container.mp4")
+        avi = shane.open(SAMPLES / "avi_container.avi")
 
-        self.assertIsInstance(mkv, sight._container.Container)
-        self.assertIsInstance(mp4, sight._container.Container)
-        self.assertIsInstance(avi, sight._container.Container)
+        self.assertIsInstance(mkv, shane._container.Container)
+        self.assertIsInstance(mp4, shane._container.Container)
+        self.assertIsInstance(avi, shane._container.Container)
 
     def test_open_stream(self):
-        mkv = sight.open(EXAMPLES / "mkv_stream.mkv")
-        avi = sight.open(EXAMPLES / "avi_stream.avi")
-        mp4 = sight.open(EXAMPLES / "mp4_stream.mp4")
-        aac = sight.open(EXAMPLES / "aac_stream.aac")
-        ac3 = sight.open(EXAMPLES / "ac3_stream.ac3")
-        srt = sight.open(EXAMPLES / "srt_stream.srt")
+        mkv = shane.open(SAMPLES / "mkv_stream.mkv")
+        avi = shane.open(SAMPLES / "avi_stream.avi")
+        mp4 = shane.open(SAMPLES / "mp4_stream.mp4")
+        aac = shane.open(SAMPLES / "aac_stream.aac")
+        ac3 = shane.open(SAMPLES / "ac3_stream.ac3")
+        srt = shane.open(SAMPLES / "srt_stream.srt")
 
-        self.assertIsInstance(mkv, sight._streams.VideoStream)
-        self.assertIsInstance(avi, sight._streams.VideoStream)
-        self.assertIsInstance(mp4, sight._streams.VideoStream)
-        self.assertIsInstance(aac, sight._streams.AudioStream)
-        self.assertIsInstance(ac3, sight._streams.AudioStream)
-        self.assertIsInstance(srt, sight._streams.SubtitleStream)
+        self.assertIsInstance(mkv, shane._streams.VideoStream)
+        self.assertIsInstance(avi, shane._streams.VideoStream)
+        self.assertIsInstance(mp4, shane._streams.VideoStream)
+        self.assertIsInstance(aac, shane._streams.AudioStream)
+        self.assertIsInstance(ac3, shane._streams.AudioStream)
+        self.assertIsInstance(srt, shane._streams.SubtitleStream)
 
 
 class TestContainer(unittest.TestCase):
     def setUp(self):
-        mkv = sight.open(EXAMPLES / "mkv_container.mkv")
-        mp4 = sight.open(EXAMPLES / "mp4_container.mp4")
-        avi = sight.open(EXAMPLES / "avi_container.avi")
+        mkv = shane.open(SAMPLES / "mkv_container.mkv")
+        mp4 = shane.open(SAMPLES / "mp4_container.mp4")
+        avi = shane.open(SAMPLES / "avi_container.avi")
 
     def test_ability_to_change_values(self):
         self.fail(f"Write {inspect.stack()[0][3]}")
@@ -93,19 +96,23 @@ class TestStream(unittest.TestCase): # Base
 
 class TestVideoStream(TestStream):
     def setUp(self):
-        mkv = sight.open(EXAMPLES / "mkv_stream.mkv")
-        avi = sight.open(EXAMPLES / "avi_stream.avi")
-        mp4 = sight.open(EXAMPLES / "mp4_stream.mp4")
+        mkv = shane.open(SAMPLES / "mkv_stream.mkv")
+        avi = shane.open(SAMPLES / "avi_stream.avi")
+        mp4 = shane.open(SAMPLES / "mp4_stream.mp4")
         # plus inner streams
 
 
 class TestAudioStream(TestStream):
     def setUp(self):
-        aac = sight.open(EXAMPLES / "aac_stream.aac")
-        ac3 = sight.open(EXAMPLES / "ac3_stream.ac3")
+        aac = shane.open(SAMPLES / "aac_stream.aac")
+        ac3 = shane.open(SAMPLES / "ac3_stream.ac3")
         # plus inner streams
 
 class TestSubtitleStream(TestStream):
     def setUp(self):
-        srt = sight.open(EXAMPLES / "srt_stream.srt")
+        srt = shane.open(SAMPLES / "srt_stream.srt")
         # plus inner stream
+
+
+if __name__ == "__main__":
+    unittest.main()
